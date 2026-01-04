@@ -34,6 +34,9 @@ export function initImageGenerator() {
   const downloadBtn = document.getElementById('download-image-btn');
 
   generateBtn.addEventListener('click', async () => {
+    showToast('Chức năng hiện không khả dụng do giới hạn API.', 'info');
+    return;
+
     const prompt = promptInput.value.trim();
     if (!prompt) {
       showToast('Vui lòng nhập mô tả cho hình ảnh.', 'warning');
