@@ -1,7 +1,7 @@
 import { showToast } from '../ui.js';
 
 export function getErrorExplainerHtml() {
-    return `
+  return `
     <h3>Error Explainer & Debugger</h3>
     <p>Dán một thông báo lỗi hoặc stack trace khó hiểu vào đây, AI sẽ giải thích và gợi ý cách sửa lỗi.</p>
 
@@ -31,43 +31,44 @@ export function getErrorExplainerHtml() {
 }
 
 export function initErrorExplainer() {
-    const errorInput = document.getElementById('error-input');
-    const contextInput = document.getElementById('error-context');
-    const analyzeBtn = document.getElementById('analyze-error-btn');
-    const errorOutput = document.getElementById('error-output');
+  const errorInput = document.getElementById('error-input');
+  const contextInput = document.getElementById('error-context');
+  const analyzeBtn = document.getElementById('analyze-error-btn');
+  const errorOutput = document.getElementById('error-output');
 
-    analyzeBtn.addEventListener('click', async () => {
-        const errorText = errorInput.value;
-        const context = contextInput.value;
+  analyzeBtn.addEventListener('click', async () => {
+    const errorText = errorInput.value;
+    const context = contextInput.value;
 
-        if (!errorText.trim()) {
-            showToast('Vui lòng nhập thông báo lỗi để phân tích.', 'warning');
-            return;
-        }
+    if (!errorText.trim()) {
+      showToast('Vui lòng nhập thông báo lỗi để phân tích.', 'warning');
+      return;
+    }
 
-        const originalBtnHTML = analyzeBtn.innerHTML;
-        analyzeBtn.disabled = true;
-        analyzeBtn.innerHTML = '<i class="ph-bold ph-spinner ph-spin"></i> Đang phân tích...';
-        errorOutput.innerHTML = '<div class="spinner-container"><i class="ph-bold ph-spinner ph-spin"></i> AI đang tìm cách sửa lỗi...</div>';
+    const originalBtnHTML = analyzeBtn.innerHTML;
+    analyzeBtn.disabled = true;
+    analyzeBtn.innerHTML = '<i class="ph-bold ph-spinner ph-spin"></i> Đang phân tích...';
+    errorOutput.innerHTML =
+      '<div class="spinner-container"><i class="ph-bold ph-spinner ph-spin"></i> AI đang tìm cách sửa lỗi...</div>';
 
-        try {
-            const result = await explainErrorWithAI(errorText, context);
-            errorOutput.innerHTML = parseMarkdown(result);
-        } catch (error) {
-            errorOutput.textContent = `Lỗi: ${error.message}`;
-            showToast('Phân tích lỗi thất bại.', 'error');
-        } finally {
-            analyzeBtn.disabled = false;
-            analyzeBtn.innerHTML = originalBtnHTML;
-        }
-    });
+    try {
+      const result = await explainErrorWithAI(errorText, context);
+      errorOutput.innerHTML = parseMarkdown(result);
+    } catch (error) {
+      errorOutput.textContent = `Lỗi: ${error.message}`;
+      showToast('Phân tích lỗi thất bại.', 'error');
+    } finally {
+      analyzeBtn.disabled = false;
+      analyzeBtn.innerHTML = originalBtnHTML;
+    }
+  });
 }
 
 async function explainErrorWithAI(errorText, context) {
-    const apiKey = import.meta.env.VITE_AI_API_KEY;
-    if (!apiKey) throw new Error("API key không được tìm thấy.");
+  const apiKey = import.meta.env.VITE_AI_API_KEY;
+  if (!apiKey) throw new Error('API key không được tìm thấy.');
 
-    const prompt = `
+  const prompt = `
       Bạn là một Lập trình viên Senior và là một người hướng dẫn kiên nhẫn. Chuyên môn của bạn là gỡ lỗi các thông báo lỗi và stack trace phức tạp.
       Môi trường/ngôn ngữ lập trình là: ${context || 'không xác định'}.
 
@@ -92,30 +93,33 @@ async function explainErrorWithAI(errorText, context) {
       \`\`\`
     `;
 
-    const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] })
-    });
+  const response = await fetch(
+    `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`,
+    {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] }),
+    },
+  );
 
-    if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(`Lỗi API: ${errorData.error.message}`);
-    }
-    const result = await response.json();
-    if (!result.candidates || result.candidates.length === 0) {
-        throw new Error("API không trả về kết quả hợp lệ.");
-    }
-    return result.candidates[0].content.parts[0].text;
+  if (!response.ok) {
+    const errorData = await response.json();
+    throw new Error(`Lỗi API: ${errorData.error.message}`);
+  }
+  const result = await response.json();
+  if (!result.candidates || result.candidates.length === 0) {
+    throw new Error('API không trả về kết quả hợp lệ.');
+  }
+  return result.candidates[0].content.parts[0].text;
 }
 
 function parseMarkdown(markdown) {
-    if (!markdown) return '';
-    if (typeof marked === 'undefined' || typeof DOMPurify === 'undefined') {
-        return markdown.replace(/\n/g, '<br>');
-    }
-    marked.setOptions({ breaks: true, gfm: true });
-    const rawHtml = marked.parse(markdown);
-    const cleanHtml = DOMPurify.sanitize(rawHtml);
-    return cleanHtml;
+  if (!markdown) return '';
+  if (typeof marked === 'undefined' || typeof DOMPurify === 'undefined') {
+    return markdown.replace(/\n/g, '<br>');
+  }
+  marked.setOptions({ breaks: true, gfm: true });
+  const rawHtml = marked.parse(markdown);
+  const cleanHtml = DOMPurify.sanitize(rawHtml);
+  return cleanHtml;
 }

@@ -27,78 +27,85 @@ export function getContentAnalyzerHtml() {
 }
 
 export function initContentAnalyzer() {
-    const contentInput = document.getElementById('content-input');
-    const aiActions = document.getElementById('ai-actions');
-    const aiOutput = document.getElementById('ai-output');
+  const contentInput = document.getElementById('content-input');
+  const aiActions = document.getElementById('ai-actions');
+  const aiOutput = document.getElementById('ai-output');
 
-    aiActions.addEventListener('click', async (e) => {
-        const button = e.target.closest('button[data-prompt]');
-        if (button) {
-            const prompt = button.dataset.prompt;
-            const content = contentInput.value;
+  aiActions.addEventListener('click', async (e) => {
+    const button = e.target.closest('button[data-prompt]');
+    if (button) {
+      const prompt = button.dataset.prompt;
+      const content = contentInput.value;
 
-            if (!content.trim()) {
-                showToast('Vui lòng nhập nội dung để phân tích.', 'warning');
-                return;
-            }
-            
-            const originalButtonHTML = button.innerHTML;
-            button.disabled = true;
-            button.innerHTML = '<i class="ph-bold ph-spinner ph-spin"></i> Đang xử lý...';
-            aiOutput.innerHTML = '<div class="spinner-container"><i class="ph-bold ph-spinner ph-spin"></i> AI đang phân tích...</div>';
-            
-            try {
-                const analysis = await analyzeWithAI(prompt, content);
-                aiOutput.innerHTML = parseMarkdown(analysis); 
-            } catch (error) {
-                aiOutput.textContent = `Lỗi phân tích: ${error.message}`;
-                showToast('AI phân tích thất bại.', 'error');
-            } finally {
-                button.disabled = false;
-                button.innerHTML = originalButtonHTML;
-            }
-        }
-    });
+      if (!content.trim()) {
+        showToast('Vui lòng nhập nội dung để phân tích.', 'warning');
+        return;
+      }
+
+      const originalButtonHTML = button.innerHTML;
+      button.disabled = true;
+      button.innerHTML = '<i class="ph-bold ph-spinner ph-spin"></i> Đang xử lý...';
+      aiOutput.innerHTML =
+        '<div class="spinner-container"><i class="ph-bold ph-spinner ph-spin"></i> AI đang phân tích...</div>';
+
+      try {
+        const analysis = await analyzeWithAI(prompt, content);
+        aiOutput.innerHTML = parseMarkdown(analysis);
+      } catch (error) {
+        aiOutput.textContent = `Lỗi phân tích: ${error.message}`;
+        showToast('AI phân tích thất bại.', 'error');
+      } finally {
+        button.disabled = false;
+        button.innerHTML = originalButtonHTML;
+      }
+    }
+  });
 }
 
 async function analyzeWithAI(prompt, content) {
-    if (!import.meta.env) {
-        throw new Error("Không tìm thấy biến môi trường. Hãy chắc chắn bạn đang chạy dự án bằng lệnh 'npm run dev'.");
+  if (!import.meta.env) {
+    throw new Error(
+      "Không tìm thấy biến môi trường. Hãy chắc chắn bạn đang chạy dự án bằng lệnh 'npm run dev'.",
+    );
+  }
+
+  const apiKey = import.meta.env.VITE_AI_API_KEY;
+
+  if (!apiKey) {
+    throw new Error('VITE_AI_API_KEY chưa được thiết lập trong file .env');
+  }
+
+  const fullPrompt = `${prompt}\n\n---\n${content}\n---`;
+
+  let chatHistory = [{ role: 'user', parts: [{ text: fullPrompt }] }];
+  const payload = { contents: chatHistory };
+
+  const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`;
+
+  const response = await fetch(apiUrl, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload),
+  });
+
+  if (!response.ok) {
+    throw new Error(`API Error: ${response.statusText}`);
+  }
+
+  const result = await response.json();
+
+  if (
+    result.candidates &&
+    result.candidates.length > 0 &&
+    result.candidates[0].content.parts[0].text
+  ) {
+    return result.candidates[0].content.parts[0].text;
+  } else {
+    if (result.candidates && result.candidates[0].finishReason === 'SAFETY') {
+      return 'Nội dung không phù hợp hoặc vi phạm chính sách an toàn của AI.';
     }
-
-    const apiKey = import.meta.env.VITE_AI_API_KEY;
-
-    if (!apiKey) {
-        throw new Error("VITE_AI_API_KEY chưa được thiết lập trong file .env");
-    }
-
-    const fullPrompt = `${prompt}\n\n---\n${content}\n---`;
-    
-    let chatHistory = [{ role: "user", parts: [{ text: fullPrompt }] }];
-    const payload = { contents: chatHistory };
-    
-    const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`;
-
-    const response = await fetch(apiUrl, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload)
-    });
-
-    if (!response.ok) {
-        throw new Error(`API Error: ${response.statusText}`);
-    }
-
-    const result = await response.json();
-    
-    if (result.candidates && result.candidates.length > 0 && result.candidates[0].content.parts[0].text) {
-        return result.candidates[0].content.parts[0].text;
-    } else {
-        if(result.candidates && result.candidates[0].finishReason === "SAFETY") {
-            return "Nội dung không phù hợp hoặc vi phạm chính sách an toàn của AI.";
-        }
-        throw new Error("Không nhận được phản hồi hợp lệ từ AI.");
-    }
+    throw new Error('Không nhận được phản hồi hợp lệ từ AI.');
+  }
 }
 
 /**
@@ -106,20 +113,20 @@ async function analyzeWithAI(prompt, content) {
  * @returns {string}
  */
 function parseMarkdown(markdown) {
-    if (!markdown) return '';
+  if (!markdown) return '';
 
-    if (typeof marked === 'undefined' || typeof DOMPurify === 'undefined') {
-        console.error('Thư viện Marked.js hoặc DOMPurify chưa được tải.');
-        return markdown;
-    }
+  if (typeof marked === 'undefined' || typeof DOMPurify === 'undefined') {
+    console.error('Thư viện Marked.js hoặc DOMPurify chưa được tải.');
+    return markdown;
+  }
 
-    marked.setOptions({
-        breaks: true,
-        gfm: true,
-    });
+  marked.setOptions({
+    breaks: true,
+    gfm: true,
+  });
 
-    const rawHtml = marked.parse(markdown);
-    const cleanHtml = DOMPurify.sanitize(rawHtml);
+  const rawHtml = marked.parse(markdown);
+  const cleanHtml = DOMPurify.sanitize(rawHtml);
 
-    return cleanHtml;
+  return cleanHtml;
 }

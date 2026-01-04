@@ -34,96 +34,100 @@ export function getRegexGeneratorHtml() {
 }
 
 export function initRegexGenerator() {
-    const descriptionInput = document.getElementById('description-input');
-    const generateBtn = document.getElementById('generate-regex-btn');
-    const regexOutput = document.getElementById('regex-output');
-    const copyBtn = document.getElementById('copy-regex-btn');
+  const descriptionInput = document.getElementById('description-input');
+  const generateBtn = document.getElementById('generate-regex-btn');
+  const regexOutput = document.getElementById('regex-output');
+  const copyBtn = document.getElementById('copy-regex-btn');
 
-    const regexInput = document.getElementById('regex-input');
-    const explainBtn = document.getElementById('explain-regex-btn');
-    const explanationOutput = document.getElementById('explanation-output');
+  const regexInput = document.getElementById('regex-input');
+  const explainBtn = document.getElementById('explain-regex-btn');
+  const explanationOutput = document.getElementById('explanation-output');
 
-    generateBtn.addEventListener('click', async () => {
-        const description = descriptionInput.value;
-        if (!description.trim()) {
-            showToast('Vui lòng nhập mô tả.', 'warning');
-            return;
-        }
+  generateBtn.addEventListener('click', async () => {
+    const description = descriptionInput.value;
+    if (!description.trim()) {
+      showToast('Vui lòng nhập mô tả.', 'warning');
+      return;
+    }
 
-        const originalBtnHTML = generateBtn.innerHTML;
-        generateBtn.disabled = true;
-        generateBtn.innerHTML = '<i class="ph-bold ph-spinner ph-spin"></i> Đang tạo...';
-        regexOutput.value = 'AI đang xử lý...';
+    const originalBtnHTML = generateBtn.innerHTML;
+    generateBtn.disabled = true;
+    generateBtn.innerHTML = '<i class="ph-bold ph-spinner ph-spin"></i> Đang tạo...';
+    regexOutput.value = 'AI đang xử lý...';
 
-        try {
-            const result = await generateRegexWithAI(description);
-            regexOutput.value = result;
-        } catch (error) {
-            regexOutput.value = `Lỗi: ${error.message}`;
-            showToast('Tạo Regex thất bại.', 'error');
-        } finally {
-            generateBtn.disabled = false;
-            generateBtn.innerHTML = originalBtnHTML;
-        }
-    });
-    
-    copyBtn.addEventListener('click', () => {
-        if (regexOutput.value && !regexOutput.value.startsWith('Lỗi')) {
-            navigator.clipboard.writeText(regexOutput.value);
-            showToast('Đã sao chép Regex!', 'success');
-        }
-    });
+    try {
+      const result = await generateRegexWithAI(description);
+      regexOutput.value = result;
+    } catch (error) {
+      regexOutput.value = `Lỗi: ${error.message}`;
+      showToast('Tạo Regex thất bại.', 'error');
+    } finally {
+      generateBtn.disabled = false;
+      generateBtn.innerHTML = originalBtnHTML;
+    }
+  });
 
-    explainBtn.addEventListener('click', async () => {
-        const regex = regexInput.value;
-        if (!regex.trim()) {
-            showToast('Vui lòng nhập Regex để giải thích.', 'warning');
-            return;
-        }
+  copyBtn.addEventListener('click', () => {
+    if (regexOutput.value && !regexOutput.value.startsWith('Lỗi')) {
+      navigator.clipboard.writeText(regexOutput.value);
+      showToast('Đã sao chép Regex!', 'success');
+    }
+  });
 
-        const originalBtnHTML = explainBtn.innerHTML;
-        explainBtn.disabled = true;
-        explainBtn.innerHTML = '<i class="ph-bold ph-spinner ph-spin"></i> Đang giải thích...';
-        explanationOutput.innerHTML = '<div class="spinner-container"><i class="ph-bold ph-spinner ph-spin"></i> AI đang phân tích...</div>';
-        
-        try {
-            const result = await explainRegexWithAI(regex);
-            explanationOutput.innerHTML = parseMarkdown(result);
-        } catch (error) {
-            explanationOutput.textContent = `Lỗi: ${error.message}`;
-            showToast('Giải thích Regex thất bại.', 'error');
-        } finally {
-            explainBtn.disabled = false;
-            explainBtn.innerHTML = originalBtnHTML;
-        }
-    });
+  explainBtn.addEventListener('click', async () => {
+    const regex = regexInput.value;
+    if (!regex.trim()) {
+      showToast('Vui lòng nhập Regex để giải thích.', 'warning');
+      return;
+    }
+
+    const originalBtnHTML = explainBtn.innerHTML;
+    explainBtn.disabled = true;
+    explainBtn.innerHTML = '<i class="ph-bold ph-spinner ph-spin"></i> Đang giải thích...';
+    explanationOutput.innerHTML =
+      '<div class="spinner-container"><i class="ph-bold ph-spinner ph-spin"></i> AI đang phân tích...</div>';
+
+    try {
+      const result = await explainRegexWithAI(regex);
+      explanationOutput.innerHTML = parseMarkdown(result);
+    } catch (error) {
+      explanationOutput.textContent = `Lỗi: ${error.message}`;
+      showToast('Giải thích Regex thất bại.', 'error');
+    } finally {
+      explainBtn.disabled = false;
+      explainBtn.innerHTML = originalBtnHTML;
+    }
+  });
 }
 
 async function generateRegexWithAI(description) {
-    const apiKey = import.meta.env.VITE_AI_API_KEY;
-    if (!apiKey) throw new Error("API key không được tìm thấy.");
+  const apiKey = import.meta.env.VITE_AI_API_KEY;
+  if (!apiKey) throw new Error('API key không được tìm thấy.');
 
-    const prompt = `Bạn là một chuyên gia hàng đầu về Regular Expression (Regex).
+  const prompt = `Bạn là một chuyên gia hàng đầu về Regular Expression (Regex).
     Dựa trên mô tả bằng ngôn ngữ tự nhiên sau đây, hãy tạo ra một biểu thức Regex chính xác và hiệu quả.
     Chỉ trả về duy nhất biểu thức Regex, không kèm theo bất kỳ giải thích, markdown, hay văn bản nào khác.
     
     Mô tả: "${description}"`;
 
-    const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] })
-    });
-    if (!response.ok) throw new Error(`Lỗi API: ${response.statusText}`);
-    const result = await response.json();
-    return result.candidates[0].content.parts[0].text.trim();
+  const response = await fetch(
+    `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`,
+    {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] }),
+    },
+  );
+  if (!response.ok) throw new Error(`Lỗi API: ${response.statusText}`);
+  const result = await response.json();
+  return result.candidates[0].content.parts[0].text.trim();
 }
 
 async function explainRegexWithAI(regex) {
-    const apiKey = import.meta.env.VITE_AI_API_KEY;
-    if (!apiKey) throw new Error("API key không được tìm thấy.");
+  const apiKey = import.meta.env.VITE_AI_API_KEY;
+  if (!apiKey) throw new Error('API key không được tìm thấy.');
 
-    const prompt = `Bạn là một chuyên gia hàng đầu về Regular Expression (Regex) và là một giáo viên có khả năng giải thích các khái niệm phức tạp một cách đơn giản.
+  const prompt = `Bạn là một chuyên gia hàng đầu về Regular Expression (Regex) và là một giáo viên có khả năng giải thích các khái niệm phức tạp một cách đơn giản.
     Hãy phân tích chi tiết biểu thức Regex sau đây.
     1.  Đưa ra mục đích tổng quát của Regex.
     2.  Giải thích từng thành phần và ký hiệu đặc biệt theo dạng danh sách.
@@ -133,23 +137,26 @@ async function explainRegexWithAI(regex) {
 
     Regex cần giải thích: \`${regex}\``;
 
-    const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] })
-    });
-    if (!response.ok) throw new Error(`Lỗi API: ${response.statusText}`);
-    const result = await response.json();
-    return result.candidates[0].content.parts[0].text;
+  const response = await fetch(
+    `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`,
+    {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] }),
+    },
+  );
+  if (!response.ok) throw new Error(`Lỗi API: ${response.statusText}`);
+  const result = await response.json();
+  return result.candidates[0].content.parts[0].text;
 }
 
 function parseMarkdown(markdown) {
-    if (!markdown) return '';
-    if (typeof marked === 'undefined' || typeof DOMPurify === 'undefined') {
-        return markdown.replace(/\\n/g, '<br>');
-    }
-    marked.setOptions({ breaks: true, gfm: true });
-    const rawHtml = marked.parse(markdown);
-    const cleanHtml = DOMPurify.sanitize(rawHtml);
-    return cleanHtml;
+  if (!markdown) return '';
+  if (typeof marked === 'undefined' || typeof DOMPurify === 'undefined') {
+    return markdown.replace(/\\n/g, '<br>');
+  }
+  marked.setOptions({ breaks: true, gfm: true });
+  const rawHtml = marked.parse(markdown);
+  const cleanHtml = DOMPurify.sanitize(rawHtml);
+  return cleanHtml;
 }

@@ -29,43 +29,44 @@ export function getSqlGeneratorHtml() {
 }
 
 export function initSqlGenerator() {
-    const schemaInput = document.getElementById('schema-input');
-    const descriptionInput = document.getElementById('query-description-input');
-    const generateBtn = document.getElementById('generate-sql-btn');
-    const sqlOutput = document.getElementById('sql-output');
+  const schemaInput = document.getElementById('schema-input');
+  const descriptionInput = document.getElementById('query-description-input');
+  const generateBtn = document.getElementById('generate-sql-btn');
+  const sqlOutput = document.getElementById('sql-output');
 
-    generateBtn.addEventListener('click', async () => {
-        const schema = schemaInput.value;
-        const description = descriptionInput.value;
+  generateBtn.addEventListener('click', async () => {
+    const schema = schemaInput.value;
+    const description = descriptionInput.value;
 
-        if (!schema.trim() || !description.trim()) {
-            showToast('Vui lòng nhập đủ cả cấu trúc database và yêu cầu.', 'warning');
-            return;
-        }
+    if (!schema.trim() || !description.trim()) {
+      showToast('Vui lòng nhập đủ cả cấu trúc database và yêu cầu.', 'warning');
+      return;
+    }
 
-        const originalBtnHTML = generateBtn.innerHTML;
-        generateBtn.disabled = true;
-        generateBtn.innerHTML = '<i class="ph-bold ph-spinner ph-spin"></i> Đang tạo...';
-        sqlOutput.innerHTML = '<div class="spinner-container"><i class="ph-bold ph-spinner ph-spin"></i> AI đang phân tích...</div>';
+    const originalBtnHTML = generateBtn.innerHTML;
+    generateBtn.disabled = true;
+    generateBtn.innerHTML = '<i class="ph-bold ph-spinner ph-spin"></i> Đang tạo...';
+    sqlOutput.innerHTML =
+      '<div class="spinner-container"><i class="ph-bold ph-spinner ph-spin"></i> AI đang phân tích...</div>';
 
-        try {
-            const result = await generateSqlWithAI(schema, description);
-            sqlOutput.innerHTML = parseMarkdown(result);
-        } catch (error) {
-            sqlOutput.textContent = `Lỗi: ${error.message}`;
-            showToast('Tạo SQL thất bại.', 'error');
-        } finally {
-            generateBtn.disabled = false;
-            generateBtn.innerHTML = originalBtnHTML;
-        }
-    });
+    try {
+      const result = await generateSqlWithAI(schema, description);
+      sqlOutput.innerHTML = parseMarkdown(result);
+    } catch (error) {
+      sqlOutput.textContent = `Lỗi: ${error.message}`;
+      showToast('Tạo SQL thất bại.', 'error');
+    } finally {
+      generateBtn.disabled = false;
+      generateBtn.innerHTML = originalBtnHTML;
+    }
+  });
 }
 
 async function generateSqlWithAI(schema, description) {
-    const apiKey = import.meta.env.VITE_AI_API_KEY;
-    if (!apiKey) throw new Error("API key không được tìm thấy.");
+  const apiKey = import.meta.env.VITE_AI_API_KEY;
+  if (!apiKey) throw new Error('API key không được tìm thấy.');
 
-    const prompt = `
+  const prompt = `
       Bạn là một chuyên gia về cơ sở dữ liệu và là một nhà phân tích dữ liệu senior, có khả năng viết các câu lệnh SQL tối ưu và chính xác.
 
       Dựa trên cấu trúc database (schema) sau đây:
@@ -82,24 +83,27 @@ async function generateSqlWithAI(schema, description) {
       Chỉ trả về duy nhất câu lệnh SQL trong một khối mã Markdown. Không thêm bất kỳ giải thích hay văn bản nào khác.
     `;
 
-    const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] })
-    });
+  const response = await fetch(
+    `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`,
+    {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] }),
+    },
+  );
 
-    if (!response.ok) throw new Error(`Lỗi API: ${response.statusText}`);
-    const result = await response.json();
-    return result.candidates[0].content.parts[0].text.trim();
+  if (!response.ok) throw new Error(`Lỗi API: ${response.statusText}`);
+  const result = await response.json();
+  return result.candidates[0].content.parts[0].text.trim();
 }
 
 function parseMarkdown(markdown) {
-    if (!markdown) return '';
-    if (typeof marked === 'undefined' || typeof DOMPurify === 'undefined') {
-        return markdown.replace(/\n/g, '<br>');
-    }
-    marked.setOptions({ breaks: true, gfm: true });
-    const rawHtml = marked.parse(markdown);
-    const cleanHtml = DOMPurify.sanitize(rawHtml);
-    return cleanHtml;
+  if (!markdown) return '';
+  if (typeof marked === 'undefined' || typeof DOMPurify === 'undefined') {
+    return markdown.replace(/\n/g, '<br>');
+  }
+  marked.setOptions({ breaks: true, gfm: true });
+  const rawHtml = marked.parse(markdown);
+  const cleanHtml = DOMPurify.sanitize(rawHtml);
+  return cleanHtml;
 }

@@ -52,24 +52,31 @@ export function initImageAnalyzer() {
     mimeType: null,
   };
 
-  setupDragDrop(panel, 'image-file-input', (file) => {
-    if (!file.type.startsWith('image/')) {
-      showToast('Vui lòng chọn một file hình ảnh.', 'error');
-      return;
-    }
+  setupDragDrop(
+    panel,
+    'image-file-input',
+    (file) => {
+      if (!file.type.startsWith('image/')) {
+        showToast('Vui lòng chọn một file hình ảnh.', 'error');
+        return;
+      }
 
-    imagePreview.src = URL.createObjectURL(file);
-    previewContainer.classList.remove('hidden');
-    aiOutput.innerHTML = 'Ảnh đã sẵn sàng, hãy chọn một hành động.';
+      imagePreview.src = URL.createObjectURL(file);
+      previewContainer.classList.remove('hidden');
+      aiOutput.innerHTML = 'Ảnh đã sẵn sàng, hãy chọn một hành động.';
 
-    fileToBase64(file).then(base64String => {
-      imageData.base64 = base64String.split(',')[1];
-      imageData.mimeType = file.type;
-    }).catch(err => {
-      showToast('Không thể đọc file ảnh.', 'error');
-      console.error(err);
-    });
-  }, MAX_IMAGE_SIZE_BYTES);
+      fileToBase64(file)
+        .then((base64String) => {
+          imageData.base64 = base64String.split(',')[1];
+          imageData.mimeType = file.type;
+        })
+        .catch((err) => {
+          showToast('Không thể đọc file ảnh.', 'error');
+          console.error(err);
+        });
+    },
+    MAX_IMAGE_SIZE_BYTES,
+  );
 
   aiActions.addEventListener('click', async (e) => {
     const button = e.target.closest('button[data-prompt]');
@@ -83,7 +90,8 @@ export function initImageAnalyzer() {
       const originalBtnHTML = button.innerHTML;
       button.disabled = true;
       button.innerHTML = '<i class="ph-bold ph-spinner ph-spin"></i> Đang xử lý...';
-      aiOutput.innerHTML = '<div class="spinner-container"><i class="ph-bold ph-spinner ph-spin"></i> AI đang phân tích ảnh...</div>';
+      aiOutput.innerHTML =
+        '<div class="spinner-container"><i class="ph-bold ph-spinner ph-spin"></i> AI đang phân tích ảnh...</div>';
 
       try {
         const analysis = await analyzeImageWithAI(prompt, imageData.base64, imageData.mimeType);
@@ -101,27 +109,32 @@ export function initImageAnalyzer() {
 
 async function analyzeImageWithAI(prompt, base64ImageData, mimeType) {
   const apiKey = import.meta.env.VITE_AI_API_KEY;
-  if (!apiKey) throw new Error("API key không được tìm thấy.");
+  if (!apiKey) throw new Error('API key không được tìm thấy.');
 
   const payload = {
-    contents: [{
-      parts: [
-        { text: prompt },
-        {
-          inline_data: {
-            mime_type: mimeType,
-            data: base64ImageData
-          }
-        }
-      ]
-    }]
+    contents: [
+      {
+        parts: [
+          { text: prompt },
+          {
+            inline_data: {
+              mime_type: mimeType,
+              data: base64ImageData,
+            },
+          },
+        ],
+      },
+    ],
   };
 
-  const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(payload)
-  });
+  const response = await fetch(
+    `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`,
+    {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    },
+  );
 
   if (!response.ok) {
     const errorData = await response.json();
@@ -129,7 +142,7 @@ async function analyzeImageWithAI(prompt, base64ImageData, mimeType) {
   }
   const result = await response.json();
   if (!result.candidates || result.candidates.length === 0) {
-    throw new Error("API không trả về kết quả hợp lệ.");
+    throw new Error('API không trả về kết quả hợp lệ.');
   }
   return result.candidates[0].content.parts[0].text;
 }
@@ -139,7 +152,7 @@ function fileToBase64(file) {
     const reader = new FileReader();
     reader.readAsDataURL(file);
     reader.onload = () => resolve(reader.result);
-    reader.onerror = error => reject(error);
+    reader.onerror = (error) => reject(error);
   });
 }
 

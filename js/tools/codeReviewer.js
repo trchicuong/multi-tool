@@ -44,53 +44,54 @@ export function getCodeReviewerHtml() {
 }
 
 export function initCodeReviewer() {
-    const codeInput = document.getElementById('code-input');
-    const langSelect = document.getElementById('code-language');
-    const aiActions = document.getElementById('ai-actions');
-    const aiOutput = document.getElementById('ai-output');
+  const codeInput = document.getElementById('code-input');
+  const langSelect = document.getElementById('code-language');
+  const aiActions = document.getElementById('ai-actions');
+  const aiOutput = document.getElementById('ai-output');
 
-    aiActions.addEventListener('click', async (e) => {
-        const button = e.target.closest('button[data-prompt]');
-        if (button) {
-            const basePrompt = button.dataset.prompt;
-            const code = codeInput.value;
-            const language = langSelect.value;
+  aiActions.addEventListener('click', async (e) => {
+    const button = e.target.closest('button[data-prompt]');
+    if (button) {
+      const basePrompt = button.dataset.prompt;
+      const code = codeInput.value;
+      const language = langSelect.value;
 
-            if (!code.trim()) {
-                showToast('Vui lòng nhập code để phân tích.', 'warning');
-                return;
-            }
-            
-            const originalButtonHTML = button.innerHTML;
-            button.disabled = true;
-            button.innerHTML = '<i class="ph-bold ph-spinner ph-spin"></i> Đang xử lý...';
-            aiOutput.innerHTML = '<div class="spinner-container"><i class="ph-bold ph-spinner ph-spin"></i> AI đang phân tích code...</div>';
-            
-            try {
-                const analysis = await reviewCodeWithAI(basePrompt, code, language);
-                aiOutput.innerHTML = parseMarkdown(analysis); 
-            } catch (error) {
-                aiOutput.textContent = `Lỗi phân tích: ${error.message}`;
-                showToast('AI phân tích thất bại.', 'error');
-            } finally {
-                button.disabled = false;
-                button.innerHTML = originalButtonHTML;
-            }
-        }
-    });
+      if (!code.trim()) {
+        showToast('Vui lòng nhập code để phân tích.', 'warning');
+        return;
+      }
+
+      const originalButtonHTML = button.innerHTML;
+      button.disabled = true;
+      button.innerHTML = '<i class="ph-bold ph-spinner ph-spin"></i> Đang xử lý...';
+      aiOutput.innerHTML =
+        '<div class="spinner-container"><i class="ph-bold ph-spinner ph-spin"></i> AI đang phân tích code...</div>';
+
+      try {
+        const analysis = await reviewCodeWithAI(basePrompt, code, language);
+        aiOutput.innerHTML = parseMarkdown(analysis);
+      } catch (error) {
+        aiOutput.textContent = `Lỗi phân tích: ${error.message}`;
+        showToast('AI phân tích thất bại.', 'error');
+      } finally {
+        button.disabled = false;
+        button.innerHTML = originalButtonHTML;
+      }
+    }
+  });
 }
 
 async function reviewCodeWithAI(basePrompt, code, language) {
-    if (!import.meta.env) {
-        throw new Error("Không tìm thấy biến môi trường.");
-    }
+  if (!import.meta.env) {
+    throw new Error('Không tìm thấy biến môi trường.');
+  }
 
-    const apiKey = import.meta.env.VITE_AI_API_KEY;
-    if (!apiKey) {
-        throw new Error("VITE_AI_API_KEY chưa được thiết lập trong file .env");
-    }
+  const apiKey = import.meta.env.VITE_AI_API_KEY;
+  if (!apiKey) {
+    throw new Error('VITE_AI_API_KEY chưa được thiết lập trong file .env');
+  }
 
-    const fullPrompt = `
+  const fullPrompt = `
         Bạn là một chuyên gia review code và lập trình viên senior.
         Nhiệm vụ của bạn là thực hiện yêu cầu sau đây cho đoạn code được cung cấp.
         
@@ -108,40 +109,40 @@ async function reviewCodeWithAI(basePrompt, code, language) {
 
         Hãy trình bày câu trả lời bằng tiếng Việt, sử dụng định dạng Markdown và các khối code để câu trả lời được rõ ràng, chuyên nghiệp.
     `;
-    
-    let chatHistory = [{ role: "user", parts: [{ text: fullPrompt }] }];
-    const payload = { contents: chatHistory };
-    
-    const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`;
 
-    const response = await fetch(apiUrl, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload)
-    });
+  let chatHistory = [{ role: 'user', parts: [{ text: fullPrompt }] }];
+  const payload = { contents: chatHistory };
 
-    if (!response.ok) {
-        throw new Error(`Lỗi API: ${response.statusText}`);
+  const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`;
+
+  const response = await fetch(apiUrl, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload),
+  });
+
+  if (!response.ok) {
+    throw new Error(`Lỗi API: ${response.statusText}`);
+  }
+
+  const result = await response.json();
+
+  if (result.candidates && result.candidates[0]?.content.parts[0]?.text) {
+    return result.candidates[0].content.parts[0].text;
+  } else {
+    if (result.candidates && result.candidates[0]?.finishReason === 'SAFETY') {
+      return 'Nội dung không phù hợp hoặc vi phạm chính sách an toàn của AI.';
     }
-
-    const result = await response.json();
-    
-    if (result.candidates && result.candidates[0]?.content.parts[0]?.text) {
-        return result.candidates[0].content.parts[0].text;
-    } else {
-        if(result.candidates && result.candidates[0]?.finishReason === "SAFETY") {
-            return "Nội dung không phù hợp hoặc vi phạm chính sách an toàn của AI.";
-        }
-        throw new Error("Không nhận được phản hồi hợp lệ từ AI.");
-    }
+    throw new Error('Không nhận được phản hồi hợp lệ từ AI.');
+  }
 }
 
 function parseMarkdown(markdown) {
-    if (!markdown) return '';
-    if (typeof marked === 'undefined' || typeof DOMPurify === 'undefined') {
-        return markdown.replace(/\\n/g, '<br>');
-    }
-    marked.setOptions({ breaks: true, gfm: true });
-    const rawHtml = marked.parse(markdown);
-    return DOMPurify.sanitize(rawHtml);
+  if (!markdown) return '';
+  if (typeof marked === 'undefined' || typeof DOMPurify === 'undefined') {
+    return markdown.replace(/\\n/g, '<br>');
+  }
+  marked.setOptions({ breaks: true, gfm: true });
+  const rawHtml = marked.parse(markdown);
+  return DOMPurify.sanitize(rawHtml);
 }

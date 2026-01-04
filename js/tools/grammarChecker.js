@@ -21,47 +21,50 @@ export function getGrammarCheckerHtml() {
 
 // Hàm khởi tạo logic và sự kiện
 export function initGrammarChecker() {
-    const grammarInput = document.getElementById('grammar-input');
-    const checkButton = document.getElementById('check-grammar-btn');
-    const aiOutput = document.getElementById('ai-output');
+  const grammarInput = document.getElementById('grammar-input');
+  const checkButton = document.getElementById('check-grammar-btn');
+  const aiOutput = document.getElementById('ai-output');
 
-    checkButton.addEventListener('click', async () => {
-        const content = grammarInput.value;
+  checkButton.addEventListener('click', async () => {
+    const content = grammarInput.value;
 
-        if (!content.trim()) {
-            showToast('Vui lòng nhập nội dung để kiểm tra.', 'warning');
-            return;
-        }
-        
-        const originalButtonHTML = checkButton.innerHTML;
-        checkButton.disabled = true;
-        checkButton.innerHTML = '<i class="ph-bold ph-spinner ph-spin"></i> Đang kiểm tra...';
-        aiOutput.innerHTML = '<div class="spinner-container"><i class="ph-bold ph-spinner ph-spin"></i> AI đang phân tích...</div>';
-        
-        try {
-            const analysis = await checkGrammarWithAI(content);
-            aiOutput.innerHTML = parseMarkdown(analysis); 
-        } catch (error) {
-            aiOutput.textContent = `Lỗi: ${error.message}`;
-            showToast('Kiểm tra ngữ pháp thất bại.', 'error');
-        } finally {
-            checkButton.disabled = false;
-            checkButton.innerHTML = originalButtonHTML;
-        }
-    });
+    if (!content.trim()) {
+      showToast('Vui lòng nhập nội dung để kiểm tra.', 'warning');
+      return;
+    }
+
+    const originalButtonHTML = checkButton.innerHTML;
+    checkButton.disabled = true;
+    checkButton.innerHTML = '<i class="ph-bold ph-spinner ph-spin"></i> Đang kiểm tra...';
+    aiOutput.innerHTML =
+      '<div class="spinner-container"><i class="ph-bold ph-spinner ph-spin"></i> AI đang phân tích...</div>';
+
+    try {
+      const analysis = await checkGrammarWithAI(content);
+      aiOutput.innerHTML = parseMarkdown(analysis);
+    } catch (error) {
+      aiOutput.textContent = `Lỗi: ${error.message}`;
+      showToast('Kiểm tra ngữ pháp thất bại.', 'error');
+    } finally {
+      checkButton.disabled = false;
+      checkButton.innerHTML = originalButtonHTML;
+    }
+  });
 }
 
 async function checkGrammarWithAI(content) {
-    if (!import.meta.env) {
-        throw new Error("Không tìm thấy biến môi trường. Hãy chắc chắn bạn đang chạy dự án bằng lệnh 'npm run dev'.");
-    }
+  if (!import.meta.env) {
+    throw new Error(
+      "Không tìm thấy biến môi trường. Hãy chắc chắn bạn đang chạy dự án bằng lệnh 'npm run dev'.",
+    );
+  }
 
-    const apiKey = import.meta.env.VITE_AI_API_KEY;
-    if (!apiKey) {
-        throw new Error("VITE_AI_API_KEY chưa được thiết lập trong file .env");
-    }
+  const apiKey = import.meta.env.VITE_AI_API_KEY;
+  if (!apiKey) {
+    throw new Error('VITE_AI_API_KEY chưa được thiết lập trong file .env');
+  }
 
-    const prompt = `
+  const prompt = `
         Bạn là một chuyên gia biên tập tiếng Anh và gia sư ngôn ngữ. Nhiệm vụ của bạn là phân tích, sửa lỗi và đưa ra phản hồi chi tiết về đoạn văn bản tiếng Anh được cung cấp.
 
         Hãy thực hiện theo các bước sau:
@@ -78,48 +81,50 @@ async function checkGrammarWithAI(content) {
         "${content}"
         ---
     `;
-    
-    let chatHistory = [{ role: "user", parts: [{ text: prompt }] }];
-    const payload = { contents: chatHistory };
-    
-    const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`;
 
-    const response = await fetch(apiUrl, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload)
-    });
+  let chatHistory = [{ role: 'user', parts: [{ text: prompt }] }];
+  const payload = { contents: chatHistory };
 
-    if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(`Lỗi API: ${response.statusText} - ${errorData.error?.message || 'Lỗi không xác định'}`);
+  const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`;
+
+  const response = await fetch(apiUrl, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload),
+  });
+
+  if (!response.ok) {
+    const errorData = await response.json();
+    throw new Error(
+      `Lỗi API: ${response.statusText} - ${errorData.error?.message || 'Lỗi không xác định'}`,
+    );
+  }
+
+  const result = await response.json();
+
+  if (result.candidates && result.candidates[0]?.content.parts[0]?.text) {
+    return result.candidates[0].content.parts[0].text;
+  } else {
+    if (result.candidates && result.candidates[0]?.finishReason === 'SAFETY') {
+      return 'AI xác định nội dung không phù hợp hoặc vi phạm chính sách an toàn.';
     }
-
-    const result = await response.json();
-    
-    if (result.candidates && result.candidates[0]?.content.parts[0]?.text) {
-        return result.candidates[0].content.parts[0].text;
-    } else {
-        if(result.candidates && result.candidates[0]?.finishReason === "SAFETY") {
-            return "AI xác định nội dung không phù hợp hoặc vi phạm chính sách an toàn.";
-        }
-        throw new Error("Không nhận được phản hồi hợp lệ từ AI.");
-    }
+    throw new Error('Không nhận được phản hồi hợp lệ từ AI.');
+  }
 }
 
 function parseMarkdown(markdown) {
-    if (!markdown) return '';
+  if (!markdown) return '';
 
-    if (typeof marked === 'undefined' || typeof DOMPurify === 'undefined') {
-        console.error('Thư viện Marked.js hoặc DOMPurify chưa được tải.');
-        return markdown.replace(/\\n/g, '<br>');
-    }
+  if (typeof marked === 'undefined' || typeof DOMPurify === 'undefined') {
+    console.error('Thư viện Marked.js hoặc DOMPurify chưa được tải.');
+    return markdown.replace(/\\n/g, '<br>');
+  }
 
-    marked.setOptions({
-        breaks: true,
-        gfm: true,
-    });
+  marked.setOptions({
+    breaks: true,
+    gfm: true,
+  });
 
-    const rawHtml = marked.parse(markdown);
-    return DOMPurify.sanitize(rawHtml);
+  const rawHtml = marked.parse(markdown);
+  return DOMPurify.sanitize(rawHtml);
 }

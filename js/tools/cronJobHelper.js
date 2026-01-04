@@ -112,7 +112,7 @@ export function initCronJobHelper() {
     const expression = cronInput.value.trim();
     if (!expression) {
       cronExplanation.textContent = '...';
-      builderInputs.forEach(input => input.value = '*');
+      builderInputs.forEach((input) => (input.value = '*'));
       updateCronStringFromBuilder();
       return;
     }
@@ -122,7 +122,7 @@ export function initCronJobHelper() {
       // Cập nhật các ô builder từ chuỗi cron
       const parts = expression.split(' ');
       if (parts.length === 5) {
-        builderInputs.forEach((input, index) => input.value = parts[index]);
+        builderInputs.forEach((input, index) => (input.value = parts[index]));
         updateCronStringFromBuilder();
       }
     } catch (e) {
@@ -132,7 +132,7 @@ export function initCronJobHelper() {
   });
 
   const updateCronStringFromBuilder = () => {
-    const values = builderInputs.map(input => input.value.trim() || '*');
+    const values = builderInputs.map((input) => input.value.trim() || '*');
     const newCronString = values.join(' ');
     builderOutput.value = newCronString;
 
@@ -142,7 +142,7 @@ export function initCronJobHelper() {
     }
   };
 
-  builderInputs.forEach(input => {
+  builderInputs.forEach((input) => {
     input.addEventListener('input', updateCronStringFromBuilder);
   });
 
@@ -159,7 +159,7 @@ export function initCronJobHelper() {
 // Hàm gọi AI để tạo biểu thức Cron
 async function generateCronWithAI(description) {
   const apiKey = import.meta.env.VITE_AI_API_KEY;
-  if (!apiKey) throw new Error("API key không được tìm thấy.");
+  if (!apiKey) throw new Error('API key không được tìm thấy.');
 
   const prompt = `Convert the following natural language schedule description into a standard 5-field cron expression. 
     The current year is ${new Date().getFullYear()}.
@@ -167,11 +167,14 @@ async function generateCronWithAI(description) {
 
     Description: "${description}"`;
 
-  const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] })
-  });
+  const response = await fetch(
+    `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`,
+    {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] }),
+    },
+  );
 
   if (!response.ok) {
     const errorData = await response.json();
@@ -179,11 +182,11 @@ async function generateCronWithAI(description) {
   }
   const result = await response.json();
   if (!result.candidates || result.candidates.length === 0) {
-    throw new Error("API không trả về kết quả hợp lệ.");
+    throw new Error('API không trả về kết quả hợp lệ.');
   }
   const cronString = result.candidates[0].content.parts[0].text.trim().replace(/`/g, ''); // Xóa các dấu ` nếu có
   if (cronString.split(' ').length !== 5) {
-    throw new Error("AI không trả về định dạng Cron hợp lệ.");
+    throw new Error('AI không trả về định dạng Cron hợp lệ.');
   }
   return cronString;
 }

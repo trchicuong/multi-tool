@@ -79,7 +79,7 @@ export function initCommitMessageGenerator() {
 
 async function generateCommitMessageWithAI(diff, style) {
   const apiKey = import.meta.env.VITE_AI_API_KEY;
-  if (!apiKey) throw new Error("API key không được tìm thấy.");
+  if (!apiKey) throw new Error('API key không được tìm thấy.');
 
   const prompt = `
       Bạn là một expert Git và là một lập trình viên senior, chuyên viết các commit message rõ ràng, súc tích và tuân thủ các chuẩn mực.
@@ -94,11 +94,14 @@ async function generateCommitMessageWithAI(diff, style) {
       Chỉ trả về duy nhất commit message. Commit message có thể bao gồm một dòng tiêu đề (subject) và một phần thân (body) nếu cần thiết để giải thích thêm. Không thêm bất kỳ văn bản nào khác ngoài commit message.
     `;
 
-  const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] })
-  });
+  const response = await fetch(
+    `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`,
+    {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] }),
+    },
+  );
 
   if (!response.ok) throw new Error(`Lỗi API: ${response.statusText}`);
   const result = await response.json();

@@ -1,7 +1,7 @@
 import { showToast } from '../ui.js';
 
 export function getUnitTestGeneratorHtml() {
-    return `
+  return `
     <h3>Unit Test Generator</h3>
     <p>Dán một hàm hoặc một class vào ô dưới đây, AI sẽ tự động viết các bài kiểm thử (unit test).</p>
 
@@ -44,72 +44,75 @@ export function getUnitTestGeneratorHtml() {
 }
 
 export function initUnitTestGenerator() {
-    const codeInput = document.getElementById('code-to-test-input');
-    const langSelect = document.getElementById('code-language-select');
-    const frameworkSelect = document.getElementById('framework-select');
-    const generateBtn = document.getElementById('generate-tests-btn');
-    const testOutput = document.getElementById('test-output');
-    const copyBtn = document.getElementById('copy-test-btn');
+  const codeInput = document.getElementById('code-to-test-input');
+  const langSelect = document.getElementById('code-language-select');
+  const frameworkSelect = document.getElementById('framework-select');
+  const generateBtn = document.getElementById('generate-tests-btn');
+  const testOutput = document.getElementById('test-output');
+  const copyBtn = document.getElementById('copy-test-btn');
 
-    const frameworkMap = {
-        JavaScript: ['Jest', 'Mocha + Chai', 'Jasmine'],
-        Python: ['PyTest', 'unittest'],
-        Java: ['JUnit', 'TestNG'],
-        TypeScript: ['Jest', 'Mocha + Chai']
-    };
+  const frameworkMap = {
+    JavaScript: ['Jest', 'Mocha + Chai', 'Jasmine'],
+    Python: ['PyTest', 'unittest'],
+    Java: ['JUnit', 'TestNG'],
+    TypeScript: ['Jest', 'Mocha + Chai'],
+  };
 
-    function updateFrameworkOptions() {
-        const selectedLang = langSelect.value;
-        const frameworks = frameworkMap[selectedLang] || [];
-        frameworkSelect.innerHTML = frameworks.map(f => `<option value="${f}">${f}</option>`).join('');
+  function updateFrameworkOptions() {
+    const selectedLang = langSelect.value;
+    const frameworks = frameworkMap[selectedLang] || [];
+    frameworkSelect.innerHTML = frameworks
+      .map((f) => `<option value="${f}">${f}</option>`)
+      .join('');
+  }
+
+  langSelect.addEventListener('change', updateFrameworkOptions);
+  updateFrameworkOptions();
+
+  generateBtn.addEventListener('click', async () => {
+    const code = codeInput.value;
+    const language = langSelect.value;
+    const framework = frameworkSelect.value;
+
+    if (!code.trim()) {
+      showToast('Vui lòng nhập code để kiểm thử.', 'warning');
+      return;
     }
 
-    langSelect.addEventListener('change', updateFrameworkOptions);
-    updateFrameworkOptions();
+    const originalBtnHTML = generateBtn.innerHTML;
+    generateBtn.disabled = true;
+    generateBtn.innerHTML = '<i class="ph-bold ph-spinner ph-spin"></i> Đang tạo...';
+    testOutput.innerHTML =
+      '<div class="spinner-container"><i class="ph-bold ph-spinner ph-spin"></i> AI đang phân tích và viết test...</div>';
 
-    generateBtn.addEventListener('click', async () => {
-        const code = codeInput.value;
-        const language = langSelect.value;
-        const framework = frameworkSelect.value;
+    try {
+      const result = await generateTestsWithAI(code, language, framework);
+      testOutput.innerHTML = parseMarkdown(result);
+    } catch (error) {
+      testOutput.textContent = `Lỗi: ${error.message}`;
+      showToast('Tạo test thất bại.', 'error');
+    } finally {
+      generateBtn.disabled = false;
+      generateBtn.innerHTML = originalBtnHTML;
+    }
+  });
 
-        if (!code.trim()) {
-            showToast('Vui lòng nhập code để kiểm thử.', 'warning');
-            return;
-        }
-
-        const originalBtnHTML = generateBtn.innerHTML;
-        generateBtn.disabled = true;
-        generateBtn.innerHTML = '<i class="ph-bold ph-spinner ph-spin"></i> Đang tạo...';
-        testOutput.innerHTML = '<div class="spinner-container"><i class="ph-bold ph-spinner ph-spin"></i> AI đang phân tích và viết test...</div>';
-
-        try {
-            const result = await generateTestsWithAI(code, language, framework);
-            testOutput.innerHTML = parseMarkdown(result);
-        } catch (error) {
-            testOutput.textContent = `Lỗi: ${error.message}`;
-            showToast('Tạo test thất bại.', 'error');
-        } finally {
-            generateBtn.disabled = false;
-            generateBtn.innerHTML = originalBtnHTML;
-        }
-    });
-
-    copyBtn.addEventListener('click', () => {
-        const codeBlock = testOutput.querySelector('code');
-        if (codeBlock) {
-            navigator.clipboard.writeText(codeBlock.textContent);
-            showToast('Đã sao chép code test!', 'success');
-        } else {
-            showToast('Không có code để sao chép.', 'warning');
-        }
-    });
+  copyBtn.addEventListener('click', () => {
+    const codeBlock = testOutput.querySelector('code');
+    if (codeBlock) {
+      navigator.clipboard.writeText(codeBlock.textContent);
+      showToast('Đã sao chép code test!', 'success');
+    } else {
+      showToast('Không có code để sao chép.', 'warning');
+    }
+  });
 }
 
 async function generateTestsWithAI(code, language, framework) {
-    const apiKey = import.meta.env.VITE_AI_API_KEY;
-    if (!apiKey) throw new Error("API key không được tìm thấy.");
+  const apiKey = import.meta.env.VITE_AI_API_KEY;
+  if (!apiKey) throw new Error('API key không được tìm thấy.');
 
-    const prompt = `
+  const prompt = `
       Bạn là một Kỹ sư Đảm bảo Chất lượng (QA Engineer) cao cấp và là một lập trình viên tỉ mỉ.
       Nhiệm vụ của bạn là viết một bộ unit test hoàn chỉnh cho đoạn code **${language}** sau đây, sử dụng framework **${framework}**.
 
@@ -128,38 +131,41 @@ async function generateTestsWithAI(code, language, framework) {
       \`\`\`
     `;
 
-    const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] })
-    });
+  const response = await fetch(
+    `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`,
+    {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] }),
+    },
+  );
 
-    if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(`Lỗi API: ${errorData.error.message}`);
-    }
-    const result = await response.json();
-    if (!result.candidates || result.candidates.length === 0) {
-        throw new Error("API không trả về kết quả hợp lệ.");
-    }
-    return result.candidates[0].content.parts[0].text;
+  if (!response.ok) {
+    const errorData = await response.json();
+    throw new Error(`Lỗi API: ${errorData.error.message}`);
+  }
+  const result = await response.json();
+  if (!result.candidates || result.candidates.length === 0) {
+    throw new Error('API không trả về kết quả hợp lệ.');
+  }
+  return result.candidates[0].content.parts[0].text;
 }
 
 function parseMarkdown(markdown) {
-    if (!markdown) return '';
-    if (typeof marked === 'undefined' || typeof DOMPurify === 'undefined') {
-        return markdown.replace(/\n/g, '<br>');
-    }
-    marked.setOptions({ breaks: true, gfm: true });
-    const rawHtml = marked.parse(markdown);
-    const cleanHtml = DOMPurify.sanitize(rawHtml);
+  if (!markdown) return '';
+  if (typeof marked === 'undefined' || typeof DOMPurify === 'undefined') {
+    return markdown.replace(/\n/g, '<br>');
+  }
+  marked.setOptions({ breaks: true, gfm: true });
+  const rawHtml = marked.parse(markdown);
+  const cleanHtml = DOMPurify.sanitize(rawHtml);
 
-    setTimeout(() => {
-        if (typeof hljs !== 'undefined') {
-            document.querySelectorAll('#test-output pre code').forEach((block) => {
-                hljs.highlightElement(block);
-            });
-        }
-    }, 0);
-    return cleanHtml;
+  setTimeout(() => {
+    if (typeof hljs !== 'undefined') {
+      document.querySelectorAll('#test-output pre code').forEach((block) => {
+        hljs.highlightElement(block);
+      });
+    }
+  }, 0);
+  return cleanHtml;
 }
