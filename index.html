@@ -1,168 +1,291 @@
 <!DOCTYPE html>
 <html lang="vi">
-
-<head>
-    <meta charset="UTF-8">
-    <meta http-equiv="X-UA-Compatible" content="IE=edge">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <head>
+    <meta charset="UTF-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"
+    />
     <title>Multi Tool - Format Converter</title>
 
-    <link rel="apple-touch-icon" sizes="180x180" href="images/apple-touch-icon.png">
-    <link rel="icon" type="image/png" sizes="32x32" href="images/favicon-32x32.png">
-    <link rel="icon" type="image/png" sizes="16x16" href="images/favicon-16x16.png">
-    <link rel="manifest" href="/site.webmanifest">
+    <link rel="apple-touch-icon" sizes="180x180" href="images/apple-touch-icon.png" />
+    <link rel="icon" type="image/png" sizes="32x32" href="images/favicon-32x32.png" />
+    <link rel="icon" type="image/png" sizes="16x16" href="images/favicon-16x16.png" />
+    <link rel="manifest" href="/site.webmanifest" />
 
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
 
-    <link rel="preload" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap"
-        as="style" onload="this.onload=null;this.rel='stylesheet'">
+    <link
+      rel="preload"
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap"
+      as="style"
+      onload="this.onload=null;this.rel='stylesheet'"
+    />
 
     <noscript>
-        <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap">
+      <link
+        rel="stylesheet"
+        href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap"
+      />
     </noscript>
 
-    <link rel="stylesheet" href="css/style.css">
+    <link rel="stylesheet" href="css/style.css" />
 
     <script src="https://unpkg.com/@phosphor-icons/web" defer></script>
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11" defer></script>
-</head>
+  </head>
 
-<body>
+  <body>
     <div class="wrap">
-        <header>
-            <button class="hamburger-btn" id="hamburgerBtn"><i class="ph-bold ph-list"></i></button>
-            <img src="images/favicon-32x32.png" alt="Logo">
-            <h1>Multi Tool</h1>
+      <header>
+        <button class="hamburger-btn" id="hamburgerBtn"><i class="ph-bold ph-list"></i></button>
+        <img src="images/favicon-32x32.png" alt="Logo" />
+        <h1>Multi Tool</h1>
 
-            <div class="header-actions">
-                <button id="reloadBtn" class="theme-toggle" title="Tải lại trang">
-                    <i class="ph-bold ph-arrows-clockwise"></i>
-                </button>
-                <button class="theme-toggle" id="themeToggle" title="Chuyển đổi giao diện">
-                    <i class="ph-bold ph-sun"></i>
-                    <i class="ph-bold ph-moon"></i>
-                </button>
-                <button class="theme-toggle" id="layoutToggle" title="Chuyển đổi layout menu">
-                    <i class="ph-bold ph-sidebar-simple"></i>
-                    <i class="ph-bold ph-rows"></i>
-                </button>
-            </div>
-        </header>
+        <div class="header-actions">
+          <button id="reloadBtn" class="theme-toggle" title="Tải lại trang">
+            <i class="ph-bold ph-arrows-clockwise"></i>
+          </button>
+          <button class="theme-toggle" id="themeToggle" title="Chuyển đổi giao diện">
+            <i class="ph-bold ph-sun"></i>
+            <i class="ph-bold ph-moon"></i>
+          </button>
+          <button class="theme-toggle" id="layoutToggle" title="Chuyển đổi layout menu">
+            <i class="ph-bold ph-sidebar-simple"></i>
+            <i class="ph-bold ph-rows"></i>
+          </button>
+        </div>
+      </header>
 
-        <main class="tools">
-            <aside class="sidebar" id="toolList">
-                <div class="sidebar-header">
-                    <h3>Tools</h3>
-                    <button class="close-btn" id="closeSidebarBtn">&times;</button>
-                </div>
+      <main class="tools">
+        <aside class="sidebar" id="toolList">
+          <div class="sidebar-header">
+            <h3>Tools</h3>
+            <button class="close-btn" id="closeSidebarBtn">&times;</button>
+          </div>
 
-                <button data-tool="contentAnalyzer" class="active group-start"><i class="ph-fill ph-chat"></i> Phân tích
-                    nội dung</button>
-                <button data-tool="aiChatbot"><i class="ph-fill ph-robot"></i> AI
-                    Chatbox</button>
-                <button data-tool="codeReviewer"><i class="ph-fill ph-code-block"></i> Code Reviewer</button>
-                <button data-tool="errorExplainer"><i class="ph-fill ph-bug"></i> AI Debugger</button>
-                <button data-tool="unitTestGenerator"><i class="ph-fill ph-test-tube"></i> Unit Test Gen</button>
-                <button data-tool="sqlGenerator"><i class="ph-fill ph-database"></i> SQL Generator</button>
-                <button data-tool="docGenerator"><i class="ph-fill ph-scroll"></i> Doc Generator</button>
-                <button data-tool="commitMessageGenerator"><i class="ph-fill ph-git-commit"></i> Commit Message</button>
-                <button data-tool="grammarChecker"><i class="ph-fill ph-seal-check"></i> Kiểm tra ngữ pháp</button>
+          <button data-tool="contentAnalyzer" class="active group-start">
+            <i class="ph-fill ph-chat"></i> Phân tích nội dung
+          </button>
+          <button data-tool="aiChatbot"><i class="ph-fill ph-robot"></i> AI Chatbox</button>
+          <button data-tool="codeReviewer">
+            <i class="ph-fill ph-code-block"></i> Code Reviewer
+          </button>
+          <button data-tool="errorExplainer"><i class="ph-fill ph-bug"></i> AI Debugger</button>
+          <button data-tool="unitTestGenerator">
+            <i class="ph-fill ph-test-tube"></i> Unit Test Gen
+          </button>
+          <button data-tool="sqlGenerator">
+            <i class="ph-fill ph-database"></i> SQL Generator
+          </button>
+          <button data-tool="docGenerator"><i class="ph-fill ph-scroll"></i> Doc Generator</button>
+          <button data-tool="commitMessageGenerator">
+            <i class="ph-fill ph-git-commit"></i> Commit Message
+          </button>
+          <button data-tool="grammarChecker">
+            <i class="ph-fill ph-seal-check"></i> Kiểm tra ngữ pháp
+          </button>
 
-                <button data-tool="jsonFormatter" class="group-start"><i class="ph-fill ph-code"></i> JSON
-                    Formatter</button>
-                <button data-tool="jsonViewer"><i class="ph-fill ph-tree-structure"></i> JSON Tree Viewer</button>
-                <button data-tool="diffChecker"><i class="ph-fill ph-git-diff"></i> Diff Checker</button>
-                <button data-tool="regexGenerator"><i class="ph-fill ph-asterisk"></i> Regex Helper</button>
-                <button data-tool="codeMinifier"><i class="ph-fill ph-file-code"></i> Minify / Unminify</button>
-                <button data-tool="csvJsonConverter"><i class="ph-fill ph-file-csv"></i> CSV ↔ JSON</button>
-                <button data-tool="htmlToJson"><i class="ph-fill ph-brackets-curly"></i> HTML/XML to JSON</button>
-                <button data-tool="base64Coder"><i class="ph-fill ph-text-outdent"></i> Text ↔ Base64</button>
-                <button data-tool="unixTimestampConverter"><i class="ph-fill ph-timer"></i> Unix Timestamp</button>
+          <button data-tool="jsonFormatter" class="group-start">
+            <i class="ph-fill ph-code"></i> JSON Formatter
+          </button>
+          <button data-tool="jsonViewer">
+            <i class="ph-fill ph-tree-structure"></i> JSON Tree Viewer
+          </button>
+          <button data-tool="diffChecker"><i class="ph-fill ph-git-diff"></i> Diff Checker</button>
+          <button data-tool="regexGenerator">
+            <i class="ph-fill ph-asterisk"></i> Regex Helper
+          </button>
+          <button data-tool="codeMinifier">
+            <i class="ph-fill ph-file-code"></i> Minify / Unminify
+          </button>
+          <button data-tool="csvJsonConverter">
+            <i class="ph-fill ph-file-csv"></i> CSV ↔ JSON
+          </button>
+          <button data-tool="htmlToJson">
+            <i class="ph-fill ph-brackets-curly"></i> HTML/XML to JSON
+          </button>
+          <button data-tool="base64Coder">
+            <i class="ph-fill ph-text-outdent"></i> Text ↔ Base64
+          </button>
+          <button data-tool="unixTimestampConverter">
+            <i class="ph-fill ph-timer"></i> Unix Timestamp
+          </button>
 
-                <button data-tool="restClient" class="group-start"><i class="ph-fill ph-plugs-connected"></i> REST API
-                    Client</button>
-                <button data-tool="jwtDecoder"><i class="ph-fill ph-key"></i> JWT Decoder</button>
-                <button data-tool="urlParser"><i class="ph-fill ph-link-simple-break"></i> URL Parser</button>
-                <button data-tool="linkShortener"><i class="ph-fill ph-link-simple-horizontal"></i> Rút gọn
-                    Link</button>
-                <button data-tool="nginxHelper"><i class="ph-fill ph-stack"></i> NGINX Helper</button>
-                <button data-tool="cronJobHelper"><i class="ph-fill ph-clock-clockwise"></i> Cron Job Helper</button>
-                <button data-tool="hashGenerator"><i class="ph-fill ph-fingerprint"></i> Trình tạo Hash</button>
-                <button data-tool="uuidGenerator"><i class="ph-fill ph-key"></i> UUID Generator</button>
-                <button data-tool="passwordGenerator"><i class="ph-fill ph-keyhole"></i> Password Gen</button>
+          <button data-tool="restClient" class="group-start">
+            <i class="ph-fill ph-plugs-connected"></i> REST API Client
+          </button>
+          <button data-tool="jwtDecoder"><i class="ph-fill ph-key"></i> JWT Decoder</button>
+          <button data-tool="urlParser">
+            <i class="ph-fill ph-link-simple-break"></i> URL Parser
+          </button>
+          <button data-tool="linkShortener">
+            <i class="ph-fill ph-link-simple-horizontal"></i> Rút gọn Link
+          </button>
+          <button data-tool="nginxHelper"><i class="ph-fill ph-stack"></i> NGINX Helper</button>
+          <button data-tool="cronJobHelper">
+            <i class="ph-fill ph-clock-clockwise"></i> Cron Job Helper
+          </button>
+          <button data-tool="hashGenerator">
+            <i class="ph-fill ph-fingerprint"></i> Trình tạo Hash
+          </button>
+          <button data-tool="uuidGenerator"><i class="ph-fill ph-key"></i> UUID Generator</button>
+          <button data-tool="passwordGenerator">
+            <i class="ph-fill ph-keyhole"></i> Password Gen
+          </button>
 
-                <button data-tool="cssUnitConverter" class="group-start"><i class="ph-fill ph-text-t"></i> CSS Unit
-                    Converter</button>
-                <button data-tool="boxShadowGenerator"><i class="ph-fill ph-square-half"></i> Box-Shadow Gen</button>
-                <button data-tool="gradientGenerator"><i class="ph-fill ph-paint-brush-broad"></i> CSS Gradient</button>
-                <button data-tool="colorConverter"><i class="ph-fill ph-paint-brush"></i> Color Converter</button>
-                <button data-tool="qrGenerator"><i class="ph-fill ph-qr-code"></i> Tạo mã QR</button>
+          <button data-tool="cssUnitConverter" class="group-start">
+            <i class="ph-fill ph-text-t"></i> CSS Unit Converter
+          </button>
+          <button data-tool="boxShadowGenerator">
+            <i class="ph-fill ph-square-half"></i> Box-Shadow Gen
+          </button>
+          <button data-tool="gradientGenerator">
+            <i class="ph-fill ph-paint-brush-broad"></i> CSS Gradient
+          </button>
+          <button data-tool="colorConverter">
+            <i class="ph-fill ph-paint-brush"></i> Color Converter
+          </button>
+          <button data-tool="qrGenerator"><i class="ph-fill ph-qr-code"></i> Tạo mã QR</button>
 
-                <button data-tool="imageToCodeGenerator" class="group-start"><i class="ph-fill ph-image-square"></i>
-                    Image to Code</button>
-                <button data-tool="imageAnalyzer"><i class="ph-fill ph-image-square"></i> Phân tích ảnh</button>
-                <button data-tool="imageGenerator"><i class="ph-fill ph-magic-wand"></i> Tạo ảnh AI</button>
-                <button data-tool="imageConverter"><i class="ph-fill ph-image"></i> Chuyển đổi Ảnh</button>
-                <button data-tool="imageEditor"><i class="ph-fill ph-pencil-line"></i> Chỉnh sửa ảnh</button>
-                <button data-tool="watermark"><i class="ph-fill ph-stamp"></i> Đóng dấu ảnh</button>
-                <button data-tool="base64File"><i class="ph-fill ph-file-arrow-up"></i> File ↔ Base64</button>
-                <button data-tool="fileUploader"><i class="ph-fill ph-upload-simple"></i> Upload File</button>
-                <button data-tool="videoThumbnail"><i class="ph-fill ph-film-strip"></i> Video → Thumbnail</button>
+          <button data-tool="imageToCodeGenerator" class="group-start">
+            <i class="ph-fill ph-image-square"></i> Image to Code
+          </button>
+          <button data-tool="imageAnalyzer">
+            <i class="ph-fill ph-image-square"></i> Phân tích ảnh
+          </button>
+          <button data-tool="imageGenerator">
+            <i class="ph-fill ph-magic-wand"></i> Tạo ảnh AI
+          </button>
+          <button data-tool="imageConverter">
+            <i class="ph-fill ph-image"></i> Chuyển đổi Ảnh
+          </button>
+          <button data-tool="imageEditor">
+            <i class="ph-fill ph-pencil-line"></i> Chỉnh sửa ảnh
+          </button>
+          <button data-tool="watermark"><i class="ph-fill ph-stamp"></i> Đóng dấu ảnh</button>
+          <button data-tool="base64File">
+            <i class="ph-fill ph-file-arrow-up"></i> File ↔ Base64
+          </button>
+          <button data-tool="fileUploader">
+            <i class="ph-fill ph-upload-simple"></i> Upload File
+          </button>
+          <button data-tool="videoThumbnail">
+            <i class="ph-fill ph-film-strip"></i> Video → Thumbnail
+          </button>
 
-                <button data-tool="fakeDataGenerator" class="group-start"><i class="ph-fill ph-users-four"></i> Tạo dữ
-                    liệu giả</button>
-                <button data-tool="loremIpsumGenerator"><i class="ph-fill ph-text-align-left"></i> Lorem Ipsum
-                    Gen</button>
+          <button data-tool="fakeDataGenerator" class="group-start">
+            <i class="ph-fill ph-users-four"></i> Tạo dữ liệu giả
+          </button>
+          <button data-tool="loremIpsumGenerator">
+            <i class="ph-fill ph-text-align-left"></i> Lorem Ipsum Gen
+          </button>
 
-                <button data-tool="chartGenerator" class="group-start"><i class="ph-fill ph-chart-bar"></i> Tạo biểu đồ
-                    từ CSV</button>
-                <button data-tool="currencyConverter"><i class="ph-fill ph-currency-dollar"></i> Đổi tiền</button>
-                <button data-tool="facebookUtils"><i class="ph-fill ph-facebook-logo"></i> Tiện ích FB</button>
-            </aside>
+          <button data-tool="chartGenerator" class="group-start">
+            <i class="ph-fill ph-chart-bar"></i> Tạo biểu đồ từ CSV
+          </button>
+          <button data-tool="currencyConverter">
+            <i class="ph-fill ph-currency-dollar"></i> Đổi tiền
+          </button>
+          <button data-tool="facebookUtils">
+            <i class="ph-fill ph-facebook-logo"></i> Tiện ích FB
+          </button>
+        </aside>
 
-            <div class="backdrop" id="backdrop"></div>
+        <div class="backdrop" id="backdrop"></div>
 
-            <section class="panel" id="panel">
-            </section>
-        </main>
+        <section class="panel" id="panel"></section>
+      </main>
 
-        <section class="coffee-section">
-            <div class="marquee-wrapper">
-                <div class="marquee-content">
-                    <a href="https://paypal.me/trchicuong" target="_blank" rel="noopener noreferrer">
-                        ☕ Buy for me a coffee: paypal.me/trchicuong
-                    </a>
-                    <a href="https://paypal.me/trchicuong" target="_blank" rel="noopener noreferrer">
-                        ☕ Buy for me a coffee: paypal.me/trchicuong
-                    </a>
-                    <a href="https://paypal.me/trchicuong" target="_blank" rel="noopener noreferrer">
-                        ☕ Buy for me a coffee: paypal.me/trchicuong
-                    </a>
-                    <a href="https://paypal.me/trchicuong" target="_blank" rel="noopener noreferrer">
-                        ☕ Buy for me a coffee: paypal.me/trchicuong
-                    </a>
-                </div>
-            </div>
-        </section>
+      <section class="coffee-section">
+        <div class="marquee-wrapper">
+          <div class="marquee-content">
+            <a href="https://paypal.me/trchicuong" target="_blank" rel="noopener noreferrer">
+              ☕ Buy for me a coffee: paypal.me/trchicuong
+            </a>
+            <a href="https://paypal.me/trchicuong" target="_blank" rel="noopener noreferrer">
+              ☕ Buy for me a coffee: paypal.me/trchicuong
+            </a>
+            <a href="https://paypal.me/trchicuong" target="_blank" rel="noopener noreferrer">
+              ☕ Buy for me a coffee: paypal.me/trchicuong
+            </a>
+            <a href="https://paypal.me/trchicuong" target="_blank" rel="noopener noreferrer">
+              ☕ Buy for me a coffee: paypal.me/trchicuong
+            </a>
+          </div>
+        </div>
+      </section>
 
-        <footer>
-            <span>Created with ❤️ by trchicuong.</span>
-            <a href="https://github.com/trchicuong/multi-tool" target="_blank">Xem trên GitHub</a>
-        </footer>
+      <footer>
+        <span>Created with ❤️ by trchicuong.</span>
+        <a href="https://github.com/trchicuong/multi-tool" target="_blank">Xem trên GitHub</a>
+      </footer>
     </div>
 
-    <script src="https://cdn.jsdelivr.net/npm/easyqrcodejs@4.6.0/dist/easy.qrcode.min.js" defer></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.2.0/crypto-js.min.js" defer></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js" defer></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/js-beautify/1.15.1/beautify.min.js" defer></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/js-beautify/1.15.1/beautify-css.min.js" defer></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/js-beautify/1.15.1/beautify-html.min.js" defer></script>
+    <script
+      src="https://cdn.jsdelivr.net/npm/easyqrcodejs@4.6.0/dist/easy.qrcode.min.js"
+      defer
+    ></script>
+    <script
+      src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.2.0/crypto-js.min.js"
+      defer
+    ></script>
+    <script
+      src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"
+      defer
+    ></script>
+    <script
+      src="https://cdnjs.cloudflare.com/ajax/libs/js-beautify/1.15.1/beautify.min.js"
+      defer
+    ></script>
+    <script
+      src="https://cdnjs.cloudflare.com/ajax/libs/js-beautify/1.15.1/beautify-css.min.js"
+      defer
+    ></script>
+    <script
+      src="https://cdnjs.cloudflare.com/ajax/libs/js-beautify/1.15.1/beautify-html.min.js"
+      defer
+    ></script>
     <script src="https://cdn.jsdelivr.net/npm/terser/dist/bundle.min.js" defer></script>
     <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js" defer></script>
     <script src="https://cdn.jsdelivr.net/npm/dompurify/dist/purify.min.js" defer></script>
 
     <script src="js/app.js" type="module"></script>
-</body>
 
+    <script>
+      setTimeout(() => {
+        console.clear();
+
+        const title =
+          'font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; font-size: 14px; font-weight: 700; color: #ffffff; margin-bottom: 8px;';
+
+        // Style tối giản: Đường kẻ dọc bên trái, padding thoáng
+        const body = `
+        font-family: Consolas, Monaco, "Andale Mono", monospace;
+        font-size: 13px;
+        line-height: 1.6;
+        color: #ffffff;
+        padding-left: 15px;
+        border-left: 3px solid #ffffff; 
+        margin-top: 5px;
+    `;
+
+        console.log('%cLời nhắn nhủ:', title);
+        console.log(
+          `%cChào bạn đang bật DevTools.
+
+Tôi biết bạn đang soi Network tab để tìm API Key.
+Nói ngắn gọn đỡ mất thời gian của nhau:
+
+1. Đây là Key Free Tier. Web này tôi chạy Serverless, Key buộc phải để ở Client. Không có tiền trong đó đâu, giới hạn request cũng thấp, bạn lấy về cũng chẳng bào được gì ra hồn.
+2. Web này dựng lên phi lợi nhuận để phục vụ cộng đồng và sử dụng cá nhân lúc cần thiết.
+
+Nếu có ý định phá hoại thì mời lượn, ở đây không có gì để khai thác đâu.`,
+          body,
+        );
+      }, 1000);
+    </script>
+  </body>
 </html>
