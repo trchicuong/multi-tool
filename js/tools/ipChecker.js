@@ -1,9 +1,12 @@
 /**
  * IP Address Checker — shows public IP, geo info, ASN, no API key needed
- * Primary: ipinfo.io · Fallback: ip-api.com (no HTTPS on free tier, http only)
+ * Primary  : ipinfo.io      — accurate geo + ASN
+ * Fallback1: freeipapi.com  — includes proxy detection
+ * Fallback2: ipapi.co       — geo + ASN + org, 1 000 req/day free
  */
 
 const APIS = [
+  // ── Primary: ipinfo.io ──────────────────────────────────────────────
   {
     url: (ip) => (ip ? `https://ipinfo.io/${ip}/json` : 'https://ipinfo.io/json'),
     map: (d) => {
@@ -29,6 +32,50 @@ const APIS = [
         isTor: null,
       };
     },
+  },
+  // ── Fallback 1: freeipapi.com — free HTTPS + proxy detection ────────
+  {
+    url: (ip) => (ip ? `https://freeipapi.com/api/json/${ip}` : 'https://freeipapi.com/api/json'),
+    map: (d) => ({
+      ip: d.ipAddress,
+      type: d.ipVersion === 6 ? 'IPv6' : 'IPv4',
+      country: d.countryName ?? '',
+      countryCode: d.countryCode,
+      region: d.regionName,
+      city: d.cityName,
+      lat: d.latitude ?? null,
+      lon: d.longitude ?? null,
+      timezone: Array.isArray(d.timeZones) ? d.timeZones[0] : (d.timeZone ?? null),
+      utcOffset: null,
+      isp: null,
+      org: null,
+      asn: null,
+      isProxy: typeof d.isProxy === 'boolean' ? d.isProxy : null,
+      isVpn: null,
+      isTor: null,
+    }),
+  },
+  // ── Fallback 2: ipapi.co — geo + ASN + org ───────────────────────────
+  {
+    url: (ip) => (ip ? `https://ipapi.co/${ip}/json/` : 'https://ipapi.co/json/'),
+    map: (d) => ({
+      ip: d.ip,
+      type: d.version ?? (d.ip?.includes(':') ? 'IPv6' : 'IPv4'),
+      country: d.country_name ?? '',
+      countryCode: d.country_code,
+      region: d.region,
+      city: d.city,
+      lat: d.latitude ?? null,
+      lon: d.longitude ?? null,
+      timezone: d.timezone,
+      utcOffset: d.utc_offset,
+      isp: d.org,
+      org: d.org,
+      asn: d.asn,
+      isProxy: null,
+      isVpn: null,
+      isTor: null,
+    }),
   },
 ];
 
@@ -194,8 +241,10 @@ export function init() {
         const res = await fetch(api.url(ip), { cache: 'no-store' });
         if (!res.ok) continue;
         const json = await res.json();
-        if (!json.ip) continue;
-        data = api.map(json);
+        // Map first, then validate — each API uses different field names
+        const mapped = api.map(json);
+        if (!mapped.ip) continue;
+        data = mapped;
         break;
       } catch {
         /* try next */

@@ -190,85 +190,122 @@ export function init() {
     stLog.textContent = msg;
   };
 
+  // Helper: fill entire Uint8Array with random bytes.
+  // crypto.getRandomValues() caps at 65536 bytes/call, so we chunk.
+  const fillRandom = (buf) => {
+    const CHUNK = 65536;
+    for (let i = 0; i < buf.length; i += CHUNK)
+      crypto.getRandomValues(buf.subarray(i, Math.min(i + CHUNK, buf.length)));
+    return buf;
+  };
+
   // ── Ping + Jitter ─────────────────────────────────────────────────────
   const measurePing = async () => {
-    const url = 'https://speed.cloudflare.com/__down?bytes=1000';
+    // bytes=1 → minimal payload, measures pure network RTT not transfer time
+    const url = 'https://speed.cloudflare.com/__down?bytes=1';
+    // Warm-up: establish TCP/TLS connection before measuring
+    try {
+      await fetch(`${url}&r=w`, { cache: 'no-store' });
+    } catch {
+      /* ignore */
+    }
+
     const samples = [];
-    for (let i = 0; i < 6; i++) {
+    for (let i = 0; i < 10; i++) {
       try {
         const t0 = performance.now();
-        await fetch(url, { cache: 'no-store' });
+        await fetch(`${url}&r=${Math.random()}`, { cache: 'no-store' });
         samples.push(performance.now() - t0);
       } catch {
         /* ignore */
       }
     }
-    if (!samples.length) return { ping: null, jitter: null };
+    if (samples.length < 2) return { ping: null, jitter: null };
     samples.sort((a, b) => a - b);
-    const ping = Math.round(samples[1] ?? samples[0]);
-    // jitter = mean absolute deviation between consecutive samples
-    const jitter =
-      samples.length > 1
-        ? Math.round(
-            samples.slice(1).reduce((s, v, i) => s + Math.abs(v - samples[i]), 0) /
-              (samples.length - 1),
-          )
-        : 0;
+    // Drop top 20% as spikes, measure from stable region
+    const usable = samples.slice(0, Math.ceil(samples.length * 0.8));
+    const ping = Math.round(usable[Math.floor(usable.length / 2)]); // median
+    const mean = usable.reduce((s, v) => s + v, 0) / usable.length;
+    // Jitter = standard deviation (matches speedtest.net methodology)
+    const jitter = Math.round(
+      Math.sqrt(usable.reduce((s, v) => s + (v - mean) ** 2, 0) / usable.length),
+    );
     return { ping, jitter };
   };
 
   // ── Download ──────────────────────────────────────────────────────────
   const measureDownload = async (onProgress) => {
-    const chunks = [
-      { url: 'https://speed.cloudflare.com/__down?bytes=100000', bytes: 100_000 },
-      { url: 'https://speed.cloudflare.com/__down?bytes=1000000', bytes: 1_000_000 },
-      { url: 'https://speed.cloudflare.com/__down?bytes=10000000', bytes: 10_000_000 },
-      { url: 'https://speed.cloudflare.com/__down?bytes=25000000', bytes: 25_000_000 },
-    ];
+    // Warm-up: pre-heat TCP/TLS so the first measured round isn't penalised
+    // by handshake overhead (real sites always do a warm-up phase).
+    try {
+      await fetch(`https://speed.cloudflare.com/__down?bytes=200000&r=w`, { cache: 'no-store' });
+    } catch {
+      /* ignore */
+    }
+
+    // PARALLEL concurrent streams per round — this is the key fix.
+    // A single TCP stream is throttled by TCP slow-start and congestion window.
+    // fast.com / Cloudflare Speed Test use 4–8 parallel streams to saturate
+    // the actual available bandwidth.
+    const PARALLEL = 4;
+    const rounds = [1_000_000, 5_000_000]; // bytes per stream
+
     let totalBytes = 0,
       totalMs = 0;
-    for (const c of chunks) {
+    for (const size of rounds) {
       try {
+        const urls = Array.from(
+          { length: PARALLEL },
+          () => `https://speed.cloudflare.com/__down?bytes=${size}&r=${Math.random()}`,
+        );
         const t0 = performance.now();
-        const res = await fetch(c.url + '&r=' + Math.random(), { cache: 'no-store' });
-        await res.arrayBuffer();
+        await Promise.all(
+          urls.map((u) => fetch(u, { cache: 'no-store' }).then((r) => r.arrayBuffer())),
+        );
         const ms = performance.now() - t0;
-        totalBytes += c.bytes;
+        totalBytes += size * PARALLEL;
         totalMs += ms;
         onProgress((totalBytes * 8) / (totalMs / 1000) / 1_000_000);
       } catch {
         /* ignore */
       }
     }
-    if (!totalMs) return null;
-    return (totalBytes * 8) / (totalMs / 1000) / 1_000_000;
+    return totalMs ? (totalBytes * 8) / (totalMs / 1000) / 1_000_000 : null;
   };
 
   // ── Upload ────────────────────────────────────────────────────────────
   const measureUpload = async (onProgress) => {
-    const sizes = [65_536, 262_144, 1_048_576, 4_194_304];
+    // PARALLEL streams (same reason as download).
+    // Each buffer is fully random — the original code only randomised the
+    // first 4 KB, leaving the rest as 0x00. HTTP/2 compresses zeros very
+    // efficiently, so the wire payload was much smaller than reported,
+    // making upload look faster than reality.
+    const PARALLEL = 3;
+    const rounds = [256_000, 1_000_000, 4_000_000]; // bytes per stream
+
     let totalBytes = 0,
       totalMs = 0;
-    for (const size of sizes) {
+    for (const size of rounds) {
       try {
-        const buf = new Uint8Array(size);
-        crypto.getRandomValues(buf.subarray(0, Math.min(4096, size)));
+        const blobs = Array.from(
+          { length: PARALLEL },
+          () => new Blob([fillRandom(new Uint8Array(size))]),
+        );
         const t0 = performance.now();
-        await fetch('https://speed.cloudflare.com/__up', {
-          method: 'POST',
-          body: new Blob([buf]),
-          cache: 'no-store',
-        });
+        await Promise.all(
+          blobs.map((body) =>
+            fetch('https://speed.cloudflare.com/__up', { method: 'POST', body, cache: 'no-store' }),
+          ),
+        );
         const ms = performance.now() - t0;
-        totalBytes += size;
+        totalBytes += size * PARALLEL;
         totalMs += ms;
         onProgress((totalBytes * 8) / (totalMs / 1000) / 1_000_000);
       } catch {
         /* ignore */
       }
     }
-    if (!totalMs) return null;
-    return (totalBytes * 8) / (totalMs / 1000) / 1_000_000;
+    return totalMs ? (totalBytes * 8) / (totalMs / 1000) / 1_000_000 : null;
   };
 
   // ── Run ───────────────────────────────────────────────────────────────

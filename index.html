@@ -17,21 +17,7 @@
       content="multi tool, developer tools, json formatter, base64, regex tester, password generator, qr generator, markdown editor, typing test, calculator, css tools"
     />
     <meta name="author" content="trchicuong" />
-    <meta name="theme-color" content="#6366f1" />
-
-    <!-- Open Graph -->
-    <meta property="og:type" content="website" />
-    <meta property="og:title" content="Multi Tool — Developer Utilities" />
-    <meta
-      property="og:description"
-      content="33 browser-based tools: JSON, Regex, Base64, QR, Markdown, Typing Test, Calculator and more."
-    />
-    <meta property="og:image" content="/images/apple-touch-icon.png" />
-
-    <!-- Twitter Card -->
-    <meta name="twitter:card" content="summary" />
-    <meta name="twitter:title" content="Multi Tool — Developer Utilities" />
-    <meta name="twitter:description" content="33 browser-based tools with no backend required." />
+    <meta name="theme-color" content="#ffffff" />
 
     <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon.png" />
     <link rel="icon" type="image/png" sizes="32x32" href="/images/favicon-32x32.png" />
@@ -60,6 +46,11 @@
   </head>
 
   <body>
+    <!-- Inline theme init: runs synchronously before first paint to prevent FOUC -->
+    <script>
+      if (localStorage.getItem('theme') === 'dark') document.body.classList.add('dark');
+    </script>
+
     <!-- Sidebar overlay for mobile -->
     <div class="backdrop" id="backdrop"></div>
 

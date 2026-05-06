@@ -81,9 +81,8 @@ const welcomeScreen = document.getElementById('welcomeScreen');
 const welcomeGrid = document.getElementById('welcomeGrid');
 
 // ── Theme ──────────────────────────────────────────────────────────────────
-const savedTheme = localStorage.getItem('theme') || 'light';
-if (savedTheme === 'dark') document.body.classList.add('dark');
-
+// Note: initial dark class is applied synchronously by the inline script
+// in <head> before first paint — see index.html. This listener handles toggle.
 themeToggle.addEventListener('click', () => {
   const isDark = document.body.classList.toggle('dark');
   localStorage.setItem('theme', isDark ? 'dark' : 'light');
@@ -129,6 +128,7 @@ toolSearch.addEventListener('input', () => {
 // ── Tool loading ───────────────────────────────────────────────────────────
 let currentTool = null;
 let isTransitioning = false;
+let welcomeGridBuilt = false;
 
 async function loadTool(slug) {
   if (slug === currentTool || isTransitioning) return;
@@ -221,29 +221,37 @@ function showWelcome() {
   navItems.forEach((item) => item.classList.remove('active'));
   topbarTitle.textContent = 'Multi Tool';
 
-  // Rebuild welcome screen if it was removed
-  panel.innerHTML = `
-    <div class="welcome-screen" id="welcomeScreen">
-      <div class="welcome-inner">
-        <h2>Multi Tool</h2>
-        <p>Bộ công cụ lập trình & tiện ích, chạy hoàn toàn trên trình duyệt.</p>
-        <div class="welcome-grid" id="welcomeGrid"></div>
+  // Rebuild welcome screen only when a tool removed it; keep static HTML on first load
+  if (!document.getElementById('welcomeScreen')) {
+    welcomeGridBuilt = false;
+    panel.innerHTML = `
+      <div class="welcome-screen" id="welcomeScreen">
+        <div class="welcome-inner">
+          <h2>Multi Tool</h2>
+          <p>Bộ công cụ lập trình & tiện ích, chạy hoàn toàn trên trình duyệt.</p>
+          <div class="welcome-grid" id="welcomeGrid"></div>
+        </div>
       </div>
-    </div>
-  `;
+    `;
+  }
 
-  // Populate welcome grid from nav items
-  const grid = document.getElementById('welcomeGrid');
-  navItems.forEach((item) => {
-    const slug = item.dataset.tool;
-    const label = item.textContent.trim();
-    const svgEl = item.querySelector('svg');
-    const a = document.createElement('a');
-    a.className = 'welcome-card';
-    a.href = `#${slug}`;
-    a.innerHTML = `${svgEl ? svgEl.outerHTML : ''}<span>${label}</span>`;
-    grid.appendChild(a);
-  });
+  // Populate welcome grid only once (skip rebuild on repeated navigations back)
+  if (!welcomeGridBuilt) {
+    const grid = document.getElementById('welcomeGrid');
+    if (grid) {
+      navItems.forEach((item) => {
+        const slug = item.dataset.tool;
+        const label = item.textContent.trim();
+        const svgEl = item.querySelector('svg');
+        const a = document.createElement('a');
+        a.className = 'welcome-card';
+        a.href = `#${slug}`;
+        a.innerHTML = `${svgEl ? svgEl.outerHTML : ''}<span>${label}</span>`;
+        grid.appendChild(a);
+      });
+      welcomeGridBuilt = true;
+    }
+  }
 }
 
 // Listen to hash changes
@@ -251,6 +259,36 @@ window.addEventListener('hashchange', handleRoute);
 
 // ── Init ───────────────────────────────────────────────────────────────────
 handleRoute();
+
+// ── Idle preloading ────────────────────────────────────────────────────────
+// After the initial route is handled, preload the most popular tools in the
+// background so they feel instant when the user first clicks them.
+// Falls back to setTimeout for browsers without requestIdleCallback (old Safari).
+const PRELOAD_TOOLS = [
+  'json-formatter',
+  'base64-text',
+  'password-generator',
+  'uuid-generator',
+  'hash-generator',
+  'regex-tester',
+];
+
+const scheduleIdle = window.requestIdleCallback
+  ? (cb) => window.requestIdleCallback(cb, { timeout: 4000 })
+  : (cb) => setTimeout(cb, 300);
+
+scheduleIdle(() => {
+  for (const slug of PRELOAD_TOOLS) {
+    if (moduleCache.has(slug)) continue;
+    const toolDef = TOOLS[slug];
+    if (!toolDef) continue;
+    const loader = toolGlob[`./${toolDef.file}`];
+    if (loader)
+      loader()
+        .then((mod) => moduleCache.set(slug, mod))
+        .catch(() => {});
+  }
+});
 
 // ── Toast utility (global) ─────────────────────────────────────────────────
 const toastContainer = document.createElement('div');
