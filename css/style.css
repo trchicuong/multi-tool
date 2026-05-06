@@ -407,6 +407,13 @@ body.dark .icon-dark {
   margin-bottom: 32px;
 }
 
+.welcome-cache-hint {
+  margin-top: -20px;
+  margin-bottom: 24px !important;
+  font-size: 12px !important;
+  color: var(--text-3) !important;
+}
+
 .welcome-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(155px, 1fr));

@@ -229,6 +229,7 @@ function showWelcome() {
         <div class="welcome-inner">
           <h2>Multi Tool</h2>
           <p>Bộ công cụ lập trình & tiện ích, chạy hoàn toàn trên trình duyệt.</p>
+          <p class="welcome-cache-hint">💡 Lần đầu mở mỗi tool có thể mất vài giây để trình duyệt tải về. Các lần sau sẽ mở ngay lập tức nhờ cache.</p>
           <div class="welcome-grid" id="welcomeGrid"></div>
         </div>
       </div>
