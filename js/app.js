@@ -61,6 +61,9 @@ const TOOLS = {
   'ip-checker': { file: 'tools/ipChecker.js', label: 'IP Address Checker' },
 };
 
+// ── Glob all tool modules so Vite bundles them as chunks at build time ────
+const toolGlob = import.meta.glob('./tools/*.js');
+
 // ── Module cache ──────────────────────────────────────────────────────────
 const moduleCache = new Map();
 
@@ -154,7 +157,9 @@ async function loadTool(slug) {
     // Load module (cached after first load)
     let mod = moduleCache.get(slug);
     if (!mod) {
-      mod = await import(/* @vite-ignore */ `./${toolDef.file}`);
+      const loader = toolGlob[`./${toolDef.file}`];
+      if (!loader) throw new Error(`Module not found: ${toolDef.file}`);
+      mod = await loader();
       moduleCache.set(slug, mod);
     }
 
