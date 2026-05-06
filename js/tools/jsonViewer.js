@@ -1,119 +1,197 @@
-import { showToast } from '../ui.js';
+/**
+ * JSON Tree Viewer — interactive collapsible tree
+ */
 
-export function getJsonViewerHtml() {
-    return `
-    <h3>JSON Tree Viewer</h3>
-    <p>Dán mã JSON của bạn vào ô bên dưới để xem dưới dạng cây thư mục có thể tương tác.</p>
+export function getHtml() {
+  return `
+    <div class="tool-header">
+      <h1>JSON Tree Viewer</h1>
+      <p>Xem JSON dưới dạng cây có thể thu gọn / mở rộng.</p>
+    </div>
 
-    <div class="row" style="align-items: flex-start; gap: 20px;">
-        <div style="flex: 1;">
-            <label for="json-input">Mã nguồn JSON:</label>
-            <textarea id="json-input" rows="20" placeholder='{ "message": "Hello World", "data": [1, 2, 3] }'></textarea>
-            <button id="render-json-btn" class="btn" style="margin-top: 10px;">Hiển thị cây</button>
+    <div class="row" style="align-items:flex-start; gap:16px;">
+      <div class="card flex-1" style="min-width:260px;">
+        <div class="field-label">JSON Input</div>
+        <textarea
+          class="mono w-full"
+          id="jvInput"
+          rows="16"
+          placeholder='{ "name": "Alice", "scores": [10, 20, 30] }'
+          style="min-height:280px; resize:vertical;"
+          spellcheck="false"
+        ></textarea>
+        <div class="btn-group">
+          <button class="btn btn-primary" id="jvRenderBtn">Render Tree</button>
+          <button class="btn btn-ghost" id="jvExpandAll">Expand All</button>
+          <button class="btn btn-ghost" id="jvCollapseAll">Collapse All</button>
         </div>
+        <div id="jvError" class="text-sm text-danger mt-1" style="min-height:16px;"></div>
+      </div>
 
-        <div style="flex: 1;">
-            <label>Dạng cây:</label>
-            <div id="json-tree-output" class="result" style="min-height: 400px; max-height: 600px; overflow-y: auto;"></div>
+      <div class="card flex-1" style="min-width:260px; overflow:auto; max-height:520px;">
+        <div class="field-label">Tree View</div>
+        <div id="jvTree" style="font-family:var(--font-mono); font-size:13px;">
+          <span class="text-muted text-sm">Nhập JSON và nhấn Render Tree.</span>
         </div>
+      </div>
     </div>
 
     <style>
-        .json-tree { padding-left: 0; margin: 0; list-style-type: none; font-family: var(--font-mono); font-size: 14px; }
-        .json-tree li { position: relative; padding-left: 20px; }
-        .json-tree .collapsible > .key::before {
-            content: '▶';
-            position: absolute;
-            left: 0;
-            top: 0;
-            cursor: pointer;
-            transition: transform 0.1s ease;
-        }
-        .json-tree .collapsible:not(.collapsed) > .key::before {
-            transform: rotate(90deg);
-        }
-        .json-tree .collapsible.collapsed > ul {
-            display: none;
-        }
-        .json-tree ul { padding-left: 20px; list-style-type: none; border-left: 1px dashed var(--border-color); }
-        .json-tree .key { color: var(--primary-color); font-weight: 600; }
-        .json-tree .value { margin-left: 8px; }
-        .json-tree .value.string { color: #28a745; } /* Green */
-        .json-tree .value.number { color: #fd7e14; } /* Orange */
-        .json-tree .value.boolean { color: #dc3545; } /* Red */
-        .json-tree .value.null { color: var(--text-color-light); font-style: italic; }
-        .json-tree .item-count { color: var(--text-color-light); margin-left: 8px; font-style: italic; }
+      .jv-ul { list-style:none; padding-left:18px; margin:0; border-left:1px solid var(--border); }
+      .jv-ul.root { padding-left:0; border-left:none; }
+      .jv-li { padding:1px 0; line-height:1.7; }
+      .jv-toggle { cursor:pointer; user-select:none; color:var(--text-3); font-size:10px; margin-right:4px; display:inline-block; width:12px; text-align:center; }
+      .jv-toggle:hover { color:var(--text-1); }
+      .jv-key { color:var(--accent); font-weight:500; }
+      .jv-colon { color:var(--text-2); margin:0 3px; }
+      .jv-str { color:var(--success); }
+      .jv-num { color:var(--warning); }
+      .jv-bool { color:var(--danger); }
+      .jv-null { color:var(--text-3); font-style:italic; }
+      .jv-count { color:var(--text-3); font-size:11px; margin-left:4px; }
+      .jv-collapsed > .jv-children { display:none; }
     </style>
   `;
 }
 
-export function initJsonViewer() {
-    const inputArea = document.getElementById('json-input');
-    const renderBtn = document.getElementById('render-json-btn');
-    const outputDiv = document.getElementById('json-tree-output');
+export function init() {
+  const inputEl = document.getElementById('jvInput');
+  const renderBtn = document.getElementById('jvRenderBtn');
+  const expandBtn = document.getElementById('jvExpandAll');
+  const collapseBtn = document.getElementById('jvCollapseAll');
+  const treeEl = document.getElementById('jvTree');
+  const errEl = document.getElementById('jvError');
 
-    const createTreeView = (data) => {
-        const root = document.createElement('ul');
-        root.className = 'json-tree';
-        buildTree(data, root);
-        return root;
-    };
+  const buildTree = (data, isRoot = false) => {
+    const ul = document.createElement('ul');
+    ul.className = `jv-ul${isRoot ? ' root' : ''}`;
 
-    const buildTree = (data, parentElement) => {
-        const isArray = Array.isArray(data);
-        for (const key in data) {
-            const value = data[key];
-            const li = document.createElement('li');
+    const entries = Array.isArray(data) ? data.map((v, i) => [i, v]) : Object.entries(data);
 
-            const keySpan = document.createElement('span');
-            keySpan.className = 'key';
-            if (!isArray) {
-                keySpan.textContent = `${key}: `;
-            }
-            li.appendChild(keySpan);
+    for (const [key, value] of entries) {
+      const li = document.createElement('li');
+      li.className = 'jv-li';
 
-            if (typeof value === 'object' && value !== null) {
-                li.classList.add('collapsible');
-                const itemCount = document.createElement('span');
-                itemCount.className = 'item-count';
-                const childCount = Object.keys(value).length;
-                itemCount.textContent = Array.isArray(value) ? `[${childCount}]` : `{${childCount}}`;
-                keySpan.appendChild(itemCount);
+      const isObj = value !== null && typeof value === 'object';
 
-                const nestedUl = document.createElement('ul');
-                buildTree(value, nestedUl);
-                li.appendChild(nestedUl);
+      if (isObj) {
+        const isArr = Array.isArray(value);
+        const childCount = isArr ? value.length : Object.keys(value).length;
+        const open = isArr ? '[' : '{';
+        const close = isArr ? ']' : '}';
 
-                keySpan.addEventListener('click', () => {
-                    li.classList.toggle('collapsed');
-                });
+        const toggle = document.createElement('span');
+        toggle.className = 'jv-toggle';
+        toggle.textContent = '▾';
 
-            } else {
-                const valueSpan = document.createElement('span');
-                valueSpan.className = 'value';
-                valueSpan.textContent = JSON.stringify(value);
-                const valueType = value === null ? 'null' : typeof value;
-                valueSpan.classList.add(valueType);
-                li.appendChild(valueSpan);
-            }
-            parentElement.appendChild(li);
+        const keySpan = document.createElement('span');
+        if (!Array.isArray(data)) {
+          keySpan.innerHTML = `<span class="jv-key">"${escHtml(String(key))}"</span><span class="jv-colon">:</span>`;
         }
-    };
 
-    renderBtn.addEventListener('click', () => {
-        const jsonString = inputArea.value;
-        if (!jsonString) {
-            showToast('Vui lòng nhập mã JSON.', 'warning');
-            return;
+        const bracket = document.createElement('span');
+        bracket.style.color = 'var(--text-2)';
+        bracket.textContent = open;
+
+        const count = document.createElement('span');
+        count.className = 'jv-count';
+        count.textContent = `${childCount} ${isArr ? 'items' : 'keys'}`;
+
+        const children = buildTree(value);
+        children.className = `jv-ul jv-children`;
+
+        const closingLine = document.createElement('div');
+        closingLine.style.color = 'var(--text-2)';
+        closingLine.textContent = close;
+
+        toggle.addEventListener('click', () => {
+          const collapsed = li.classList.toggle('jv-collapsed');
+          toggle.textContent = collapsed ? '▸' : '▾';
+          count.style.display = collapsed ? 'inline' : 'none';
+        });
+
+        li.append(toggle, keySpan, bracket, count, children, closingLine);
+      } else {
+        const toggle = document.createElement('span');
+        toggle.className = 'jv-toggle';
+        toggle.style.visibility = 'hidden';
+
+        const keySpan = document.createElement('span');
+        if (!Array.isArray(data)) {
+          keySpan.innerHTML = `<span class="jv-key">"${escHtml(String(key))}"</span><span class="jv-colon">:</span>`;
         }
-        try {
-            const jsonData = JSON.parse(jsonString);
-            outputDiv.innerHTML = '';
-            const treeView = createTreeView(jsonData);
-            outputDiv.appendChild(treeView);
-        } catch (error) {
-            showToast('Mã JSON không hợp lệ.', 'error');
-            outputDiv.innerHTML = `<span style="color: var(--error-color);">Lỗi: ${error.message}</span>`;
+
+        const valSpan = document.createElement('span');
+        if (value === null) {
+          valSpan.className = 'jv-null';
+          valSpan.textContent = 'null';
+        } else if (typeof value === 'string') {
+          valSpan.className = 'jv-str';
+          valSpan.textContent = `"${escHtml(value)}"`;
+        } else if (typeof value === 'number') {
+          valSpan.className = 'jv-num';
+          valSpan.textContent = value;
+        } else if (typeof value === 'boolean') {
+          valSpan.className = 'jv-bool';
+          valSpan.textContent = value;
         }
+
+        li.append(toggle, keySpan, valSpan);
+      }
+
+      ul.appendChild(li);
+    }
+    return ul;
+  };
+
+  const render = () => {
+    const raw = inputEl.value.trim();
+    errEl.textContent = '';
+    if (!raw) {
+      treeEl.innerHTML = '<span class="text-muted text-sm">Nhập JSON và nhấn Render Tree.</span>';
+      return;
+    }
+
+    try {
+      const data = JSON.parse(raw);
+      treeEl.innerHTML = '';
+      treeEl.appendChild(buildTree(data, true));
+    } catch (e) {
+      errEl.textContent = e.message;
+    }
+  };
+
+  renderBtn.addEventListener('click', render);
+
+  inputEl.addEventListener('keydown', (e) => {
+    if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') render();
+  });
+
+  expandBtn.addEventListener('click', () => {
+    treeEl.querySelectorAll('.jv-collapsed').forEach((el) => {
+      el.classList.remove('jv-collapsed');
+      const t = el.querySelector('.jv-toggle');
+      if (t) t.textContent = '▾';
+      const c = el.querySelector('.jv-count');
+      if (c) c.style.display = 'none';
     });
+  });
+
+  collapseBtn.addEventListener('click', () => {
+    treeEl.querySelectorAll('.jv-li:has(.jv-children)').forEach((li) => {
+      li.classList.add('jv-collapsed');
+      const t = li.querySelector(':scope > .jv-toggle');
+      if (t) t.textContent = '▸';
+      const c = li.querySelector(':scope > .jv-count');
+      if (c) c.style.display = 'inline';
+    });
+  });
+}
+
+function escHtml(s) {
+  return s
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;');
 }

@@ -9,10 +9,12 @@ Một ứng dụng web mã nguồn mở gồm hơn 30 công cụ hữu ích cho 
 ### 📥 Tải về
 
 **Clone từ GitHub:**
+
 ```bash
 git clone https://github.com/trchicuong/multi-tool.git
 cd multi-tool
 ```
+
 Hoặc tải file `.zip` trực tiếp từ repository.
 
 ---
@@ -20,26 +22,21 @@ Hoặc tải file `.zip` trực tiếp từ repository.
 ### ⚙️ Cài đặt & Chạy
 
 1.  **Cài đặt các gói phụ thuộc:**
+
     ```bash
     npm install
     ```
 
-2.  **Thêm API Key:**
-    - Đổi tên file `.env.example` ở thư mục gốc của dự án thành `.env`
-    - Mở file `.env` thay thế `your_api_key` bằng API Key của bạn từ Google AI Studio:
-      ```
-      VITE_AI_API_KEY=your_api_key
-      ```
+2.  **Chạy server phát triển:**
 
-3.  **Chạy server phát triển:**
     ```bash
     npm run dev
     ```
 
-4.  **Truy cập trình duyệt:**
+3.  **Truy cập trình duyệt:**
     Mở `http://localhost:5173` (hoặc cổng khác do Vite cung cấp).
 
-5. **Deploy website:**
+4.  **Deploy website:**
     Netlify, Vercel,...
 
 ---
@@ -60,12 +57,9 @@ multi-tool/
 │   └── ... (png, favicon)
 ├── js/
 │   ├── tools/
-│   │   ├── aiChatbot.js
 │   │   ├── base64File.js
 │   │   └── ... (các file công cụ khác)
 │   ├── app.js
-│   ├── ui.js
-│   └── utils.js
 ├── .env.example
 ├── .gitignore
 ├── index.html
@@ -74,6 +68,7 @@ multi-tool/
 └── README.md
 └── site.webmanifest
 ```
+
 ---
 
 ### 🤝 Đóng góp

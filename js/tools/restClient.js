@@ -1,191 +1,270 @@
-import { showToast } from '../ui.js';
+/**
+ * REST Client — fetch-based HTTP tester
+ */
 
-export function getRestClientHtml() {
-    return `
-        <h3>REST API Client</h3>
-        <p>Gửi yêu cầu HTTP/HTTPS và xem phản hồi. 
-            <strong style="color: var(--error-color);">Lưu ý:</strong> Do giới hạn của trình duyệt (CORS), chỉ các API cho phép truy cập từ tên miền khác mới hoạt động.
-        </p>
+export function getHtml() {
+  return `
+    <div class="tool-header">
+      <h1>REST Client</h1>
+      <p>Gửi HTTP request trực tiếp từ trình duyệt. Hỗ trợ GET, POST, PUT, PATCH, DELETE, HEAD.</p>
+    </div>
 
-        <div class="row" style="align-items: stretch;">
-            <select id="http-method" style="flex: 0 1 120px;">
-                <option>GET</option>
-                <option>POST</option>
-                <option>PUT</option>
-                <option>PATCH</option>
-                <option>DELETE</option>
-                <option>HEAD</option>
-                <option>OPTIONS</option>
-            </select>
-            <input type="text" id="api-url" placeholder="https://api.example.com/data" style="flex: 1;">
-            <button id="send-btn" class="btn">Gửi</button>
+    <div class="card">
+      <!-- Request bar -->
+      <div class="d-flex align-center gap-2" style="flex-wrap:wrap;">
+        <select id="rcMethod" style="width:110px; font-weight:600;">
+          <option value="GET">GET</option>
+          <option value="POST">POST</option>
+          <option value="PUT">PUT</option>
+          <option value="PATCH">PATCH</option>
+          <option value="DELETE">DELETE</option>
+          <option value="HEAD">HEAD</option>
+        </select>
+        <input type="text" id="rcUrl" placeholder="https://api.example.com/endpoint" class="flex-1 mono"
+          style="min-width:200px;" spellcheck="false" />
+        <button class="btn btn-primary" id="rcSend">Send</button>
+      </div>
+
+      <!-- Tabs -->
+      <div class="d-flex gap-1 mt-2" style="border-bottom: 1px solid var(--border); padding-bottom:2px;">
+        <button class="btn btn-ghost btn-sm rc-tab active" data-tab="rcHeaders">Headers</button>
+        <button class="btn btn-ghost btn-sm rc-tab" data-tab="rcBody">Body</button>
+        <button class="btn btn-ghost btn-sm rc-tab" data-tab="rcQuery">Query Params</button>
+      </div>
+
+      <!-- Headers panel -->
+      <div id="rcHeaders" class="rc-panel mt-2">
+        <div id="rcHeaderRows" style="display:flex; flex-direction:column; gap:6px;"></div>
+        <button class="btn btn-ghost btn-sm mt-1" id="rcAddHeader">+ Add Header</button>
+      </div>
+
+      <!-- Body panel -->
+      <div id="rcBody" class="rc-panel mt-2" style="display:none;">
+        <div class="d-flex align-center gap-2 mb-1" style="flex-wrap:wrap;">
+          <select id="rcBodyType" style="width:160px;">
+            <option value="none">None</option>
+            <option value="json" selected>JSON</option>
+            <option value="form-urlencoded">Form URL-encoded</option>
+            <option value="text/plain">Plain Text</option>
+          </select>
         </div>
+        <textarea id="rcBodyText" rows="8" class="mono w-full"
+          placeholder='{"key": "value"}' spellcheck="false"
+          style="resize:vertical; font-size:13px; line-height:1.5;"></textarea>
+      </div>
 
-        <div class="tabs-container" style="margin-top: 20px;">
-            <div class="tab-buttons">
-                <button class="tab-btn active" data-tab="req-body">Body</button>
-                <button class="tab-btn" data-tab="req-headers">Headers</button>
-            </div>
-            <div class="tab-content">
-                <div id="tab-req-body" class="tab-pane active">
-                    <textarea id="request-body" rows="8" placeholder="{\n  \"key\": \"value\"\n}"></textarea>
-                </div>
-                <div id="tab-req-headers" class="tab-pane">
-                    <div id="request-headers-container">
-                        </div>
-                    <button id="add-header-btn" class="btn ghost" style="margin-top: 10px;">+ Thêm Header</button>
-                </div>
-            </div>
+      <!-- Query params panel -->
+      <div id="rcQuery" class="rc-panel mt-2" style="display:none;">
+        <div id="rcQueryRows" style="display:flex; flex-direction:column; gap:6px;"></div>
+        <button class="btn btn-ghost btn-sm mt-1" id="rcAddQuery">+ Add Param</button>
+      </div>
+    </div>
+
+    <!-- Response -->
+    <div class="card mt-2" id="rcResponseCard" style="display:none;">
+      <div class="d-flex align-center gap-2 mb-2" style="flex-wrap:wrap; justify-content:space-between;">
+        <div class="d-flex align-center gap-2">
+          <span class="field-label" style="margin:0;">Response</span>
+          <span id="rcStatusBadge" class="mono text-sm" style="padding:2px 8px; border-radius:4px; font-weight:600;"></span>
+          <span id="rcTimeBadge" class="text-muted text-sm"></span>
         </div>
-
-        <div id="response-area" style="margin-top: 20px; display: none;">
-            <h4>Phản hồi</h4>
-            <div id="response-status" style="margin-bottom: 10px;"></div>
-            <div class="tabs-container">
-                <div class="tab-buttons">
-                    <button class="tab-btn active" data-tab="res-body">Body</button>
-                    <button class="tab-btn" data-tab="res-headers">Headers</button>
-                </div>
-                <div class="tab-content">
-                     <div id="tab-res-body" class="tab-pane active">
-                        <pre id="response-body" class="result" style="margin-top:0;"></pre>
-                     </div>
-                     <div id="tab-res-headers" class="tab-pane">
-                        <pre id="response-headers" class="result" style="margin-top:0;"></pre>
-                     </div>
-                </div>
-            </div>
+        <div class="btn-group">
+          <button class="btn btn-ghost btn-sm rc-resp-tab active" data-rtab="rcRespBody">Body</button>
+          <button class="btn btn-ghost btn-sm rc-resp-tab" data-rtab="rcRespHeaders">Headers</button>
         </div>
-
-        <div id="loading-indicator" class="spinner-container" style="display: none;">
-            <i class="ph-bold ph-spinner ph-spin" style="font-size: 2em;"></i> <p>Đang gửi yêu cầu...</p>
+      </div>
+      <div id="rcRespBody">
+        <div class="d-flex align-center gap-1 mb-1" style="justify-content:flex-end;">
+          <button class="btn btn-ghost btn-sm copy-btn" id="rcCopyResp">Copy</button>
         </div>
+        <pre id="rcRespBodyText" class="output-box mono" style="white-space:pre-wrap; overflow:auto; max-height:400px; font-size:13px;"></pre>
+      </div>
+      <div id="rcRespHeaders" style="display:none;">
+        <pre id="rcRespHeadersText" class="output-box mono" style="white-space:pre-wrap; overflow:auto; max-height:300px; font-size:13px;"></pre>
+      </div>
+    </div>
 
-        <style>
-            .tabs-container .tab-buttons { display: flex; border-bottom: 1px solid var(--border-color); }
-            .tabs-container .tab-btn { background: none; border: none; padding: 10px 15px; cursor: pointer; color: var(--text-color-light); border-bottom: 2px solid transparent; }
-            .tabs-container .tab-btn.active { color: var(--primary-color); border-bottom-color: var(--primary-color); font-weight: 600; }
-            .tabs-container .tab-pane { display: none; padding-top: 15px; }
-            .tabs-container .tab-pane.active { display: block; }
-            .header-row { display: flex; gap: 10px; margin-bottom: 10px; }
-            .header-row input { flex: 1; }
-            .header-row button { flex-shrink: 0; }
-        </style>
-    `;
+    <div id="rcLoading" style="display:none; text-align:center; padding:16px;" class="text-muted">Sending request...</div>
+    <div id="rcError" style="display:none;" class="card mt-2">
+      <p class="text-sm" id="rcErrorMsg" style="color: var(--danger, #ef4444);"></p>
+    </div>
+  `;
 }
 
-export function initRestClient() {
-    const methodSelect = document.getElementById('http-method');
-    const urlInput = document.getElementById('api-url');
-    const sendBtn = document.getElementById('send-btn');
-    const requestBody = document.getElementById('request-body');
-    const addHeaderBtn = document.getElementById('add-header-btn');
-    const requestHeadersContainer = document.getElementById('request-headers-container');
-    const responseArea = document.getElementById('response-area');
-    const responseStatus = document.getElementById('response-status');
-    const responseBody = document.getElementById('response-body');
-    const responseHeaders = document.getElementById('response-headers');
-    const loadingIndicator = document.getElementById('loading-indicator');
+export function init() {
+  const methodSel = document.getElementById('rcMethod');
+  const urlInput = document.getElementById('rcUrl');
+  const sendBtn = document.getElementById('rcSend');
+  const loadingEl = document.getElementById('rcLoading');
+  const errorEl = document.getElementById('rcError');
+  const errorMsg = document.getElementById('rcErrorMsg');
+  const respCard = document.getElementById('rcResponseCard');
+  const statusBadge = document.getElementById('rcStatusBadge');
+  const timeBadge = document.getElementById('rcTimeBadge');
+  const bodyText = document.getElementById('rcRespBodyText');
+  const headersText = document.getElementById('rcRespHeadersText');
+  const copyRespBtn = document.getElementById('rcCopyResp');
+  const bodyTypeSel = document.getElementById('rcBodyType');
 
-    document.querySelectorAll('.tabs-container').forEach(container => {
-        const tabButtons = container.querySelectorAll('.tab-btn');
-        const tabPanes = container.querySelectorAll('.tab-pane');
-        tabButtons.forEach(button => {
-            button.addEventListener('click', () => {
-                tabButtons.forEach(btn => btn.classList.remove('active'));
-                button.classList.add('active');
-                const tabName = button.getAttribute('data-tab');
-                tabPanes.forEach(pane => {
-                    if (pane.id === `tab-${tabName}`) {
-                        pane.classList.add('active');
-                    } else {
-                        pane.classList.remove('active');
-                    }
-                });
-            });
-        });
+  // --- Tab switching ---
+  document.querySelectorAll('.rc-tab').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('.rc-tab').forEach((b) => b.classList.remove('active'));
+      btn.classList.add('active');
+      document.querySelectorAll('.rc-panel').forEach((p) => (p.style.display = 'none'));
+      document.getElementById(btn.dataset.tab).style.display = '';
     });
+  });
 
-    const addNewHeaderRow = () => {
-        const row = document.createElement('div');
-        row.className = 'header-row';
-        row.innerHTML = `
-            <input type="text" placeholder="Key" class="header-key">
-            <input type="text" placeholder="Value" class="header-value">
-            <button class="btn ghost remove-header-btn">&times;</button>
-        `;
-        row.querySelector('.remove-header-btn').addEventListener('click', () => row.remove());
-        requestHeadersContainer.appendChild(row);
-    };
-    addHeaderBtn.addEventListener('click', addNewHeaderRow);
-    addNewHeaderRow();
+  document.querySelectorAll('.rc-resp-tab').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('.rc-resp-tab').forEach((b) => b.classList.remove('active'));
+      btn.classList.add('active');
+      document.getElementById('rcRespBody').style.display =
+        btn.dataset.rtab === 'rcRespBody' ? '' : 'none';
+      document.getElementById('rcRespHeaders').style.display =
+        btn.dataset.rtab === 'rcRespHeaders' ? '' : 'none';
+    });
+  });
 
-    const sendRequest = async () => {
-        const url = urlInput.value.trim();
-        if (!url) {
-            showToast('Vui lòng nhập URL.', 'warning');
-            return;
-        }
+  // --- Dynamic key-value rows ---
+  const makeRow = (containerId, placeholder1 = 'Key', placeholder2 = 'Value') => {
+    const row = document.createElement('div');
+    row.className = 'd-flex align-center gap-1';
+    row.innerHTML = `
+      <input type="text" placeholder="${placeholder1}" style="flex:1;" spellcheck="false" />
+      <input type="text" placeholder="${placeholder2}" style="flex:2;" spellcheck="false" />
+      <button class="btn btn-ghost btn-sm" style="flex:0 0 auto; color:var(--text-3);" title="Remove">✕</button>
+    `;
+    row.querySelector('button').addEventListener('click', () => row.remove());
+    document.getElementById(containerId).appendChild(row);
+  };
 
-        loadingIndicator.style.display = 'flex';
-        responseArea.style.display = 'none';
+  document
+    .getElementById('rcAddHeader')
+    .addEventListener('click', () => makeRow('rcHeaderRows', 'Header', 'Value'));
+  document
+    .getElementById('rcAddQuery')
+    .addEventListener('click', () => makeRow('rcQueryRows', 'Param', 'Value'));
 
-        const method = methodSelect.value;
-        const headers = new Headers();
-        document.querySelectorAll('.header-row').forEach(row => {
-            const key = row.querySelector('.header-key').value.trim();
-            const value = row.querySelector('.header-value').value.trim();
-            if (key) headers.append(key, value);
-        });
+  // Add default headers row
+  makeRow('rcHeaderRows', 'Header', 'Value');
+  // Set a default header
+  const firstRow = document.getElementById('rcHeaderRows').querySelector('input');
+  if (firstRow) {
+    firstRow.value = 'Content-Type';
+    firstRow.nextElementSibling.value = 'application/json';
+  }
 
-        const options = { method, headers };
-        const body = requestBody.value.trim();
-        if (['POST', 'PUT', 'PATCH'].includes(method) && body) {
-            options.body = body;
-            if (!headers.has('Content-Type')) {
-                headers.append('Content-Type', 'application/json');
-            }
-        }
+  const getRows = (containerId) => {
+    const rows = document.querySelectorAll(`#${containerId} .d-flex`);
+    const out = {};
+    rows.forEach((row) => {
+      const inputs = row.querySelectorAll('input');
+      const k = inputs[0]?.value.trim();
+      const v = inputs[1]?.value.trim();
+      if (k) out[k] = v;
+    });
+    return out;
+  };
 
-        try {
-            const startTime = performance.now();
-            const response = await fetch(url, options);
-            const endTime = performance.now();
-            const duration = Math.round(endTime - startTime);
+  // --- Send ---
+  sendBtn.addEventListener('click', async () => {
+    let url = urlInput.value.trim();
+    if (!url) {
+      window.showToast('Nhập URL', 'error');
+      return;
+    }
+    if (!/^https?:\/\//.test(url)) url = 'https://' + url;
 
-            const statusClass = response.ok ? 'success-color' : 'error-color';
-            responseStatus.innerHTML = `
-                <strong>Trạng thái:</strong> <span style="color: var(--${statusClass});">${response.status} ${response.statusText}</span>
-                &nbsp;&nbsp; <strong>Thời gian:</strong> ${duration} ms
-            `;
+    // Append query params
+    const queryParams = getRows('rcQueryRows');
+    if (Object.keys(queryParams).length) {
+      const sep = url.includes('?') ? '&' : '?';
+      url +=
+        sep +
+        Object.entries(queryParams)
+          .map(([k, v]) => `${encodeURIComponent(k)}=${encodeURIComponent(v)}`)
+          .join('&');
+    }
 
-            let headersText = '';
-            for (const [key, value] of response.headers.entries()) {
-                headersText += `${key}: ${value}\n`;
-            }
-            responseHeaders.textContent = headersText || 'Không có headers trả về.';
+    const method = methodSel.value;
+    const headers = getRows('rcHeaderRows');
+    const bodyType = bodyTypeSel.value;
+    const bodyRaw = document.getElementById('rcBodyText').value.trim();
 
-            const contentType = response.headers.get('content-type');
-            let responseData;
-            if (contentType && contentType.includes('application/json')) {
-                responseData = await response.json();
-                responseBody.textContent = JSON.stringify(responseData, null, 2);
-            } else {
-                responseData = await response.text();
-                responseBody.textContent = responseData || 'Không có nội dung trả về.';
-            }
+    const options = { method, headers };
+    if (!['GET', 'HEAD'].includes(method) && bodyType !== 'none' && bodyRaw) {
+      if (bodyType === 'json') {
+        options.body = bodyRaw;
+        options.headers['Content-Type'] = 'application/json';
+      } else if (bodyType === 'form-urlencoded') {
+        options.body = bodyRaw;
+        options.headers['Content-Type'] = 'application/x-www-form-urlencoded';
+      } else {
+        options.body = bodyRaw;
+        options.headers['Content-Type'] = 'text/plain';
+      }
+    }
 
-            responseArea.style.display = 'block';
+    sendBtn.disabled = true;
+    loadingEl.style.display = '';
+    respCard.style.display = 'none';
+    errorEl.style.display = 'none';
 
-        } catch (error) {
-            responseArea.style.display = 'block';
-            responseStatus.innerHTML = `<strong>Trạng thái:</strong> <span style="color: var(--error-color);">Lỗi mạng</span>`;
-            responseBody.textContent = `Không thể gửi yêu cầu.\n\nLỗi: ${error.message}\n\nĐây có thể là lỗi CORS. Hãy đảm bảo API bạn đang gọi cho phép truy cập từ tên miền này, hoặc sử dụng một tiện ích CORS trên trình duyệt để kiểm tra.`;
-            showToast('Lỗi mạng hoặc CORS.', 'error');
-        } finally {
-            loadingIndicator.style.display = 'none';
-        }
-    };
+    const t0 = performance.now();
+    try {
+      const resp = await fetch(url, options);
+      const elapsed = Math.round(performance.now() - t0);
+      const status = resp.status;
+      const statusText = resp.statusText;
 
-    sendBtn.addEventListener('click', sendRequest);
+      // Status badge color
+      statusBadge.textContent = `${status} ${statusText}`;
+      statusBadge.style.background =
+        status < 300
+          ? 'var(--success-bg, #d1fae5)'
+          : status < 400
+            ? 'var(--warn-bg, #fef3c7)'
+            : 'var(--danger-bg, #fee2e2)';
+      statusBadge.style.color =
+        status < 300
+          ? 'var(--success, #059669)'
+          : status < 400
+            ? 'var(--warn, #d97706)'
+            : 'var(--danger, #ef4444)';
+      timeBadge.textContent = `${elapsed}ms`;
+
+      // Response headers
+      const hdrs = {};
+      resp.headers.forEach((v, k) => {
+        hdrs[k] = v;
+      });
+      headersText.textContent = Object.entries(hdrs)
+        .map(([k, v]) => `${k}: ${v}`)
+        .join('\n');
+
+      const ct = resp.headers.get('content-type') || '';
+      const raw = ct.includes('json')
+        ? JSON.stringify(await resp.json(), null, 2)
+        : await resp.text();
+      bodyText.textContent = raw;
+      respCard.style.display = '';
+    } catch (err) {
+      errorMsg.textContent = `Request failed: ${err.message}`;
+      errorEl.style.display = '';
+    } finally {
+      sendBtn.disabled = false;
+      loadingEl.style.display = 'none';
+    }
+  });
+
+  copyRespBtn.addEventListener('click', () =>
+    window.copyToClipboard(bodyText.textContent, copyRespBtn),
+  );
+
+  // Submit on Enter in URL bar
+  urlInput.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') sendBtn.click();
+  });
 }

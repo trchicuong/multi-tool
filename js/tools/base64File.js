@@ -1,100 +1,176 @@
-import { showToast, setupDragDrop } from '../ui.js';
-import { downloadBlob, dataURLtoBlob } from '../utils.js';
+/**
+ * File ↔ Base64 — encode file to Base64 string or decode back
+ */
 
-export function getBase64FileHtml() {
-    return `
-    <h3>File ↔ Base64</h3>
-    <div class="row">
-        <button class="btn" id="b64-mode-encode">Mã hóa (File → Base64)</button>
-        <button class="btn ghost" id="b64-mode-decode">Giải mã (Base64 → File)</button>
+export function getHtml() {
+  return `
+    <div class="tool-header">
+      <h1>File ↔ Base64</h1>
+      <p>Chuyển đổi file sang chuỗi Base64 và ngược lại.</p>
     </div>
-    <div id="b64-panel" style="margin-top:16px;">
+
+    <div class="d-flex gap-1 mb-2">
+      <button class="btn btn-primary btn-sm mode-btn active" data-mode="encode">File → Base64</button>
+      <button class="btn btn-secondary btn-sm mode-btn" data-mode="decode">Base64 → File</button>
+    </div>
+
+    <!-- Encode panel -->
+    <div id="encodePanel" class="card">
+      <div class="drop-zone" id="encDropZone">
+        <input type="file" id="encFileInput" style="display:none;" />
+        <div class="drop-zone-text">
+          <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="display:block;margin:0 auto 8px;opacity:.6;"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+          <strong>Chọn file</strong> hoặc kéo thả vào đây<br>
+          <span class="text-sm text-muted">Tối đa 10 MB</span>
         </div>
+      </div>
+      <div id="encInfo" class="text-sm text-muted mt-1" style="min-height:18px;"></div>
+      <div id="encResult" style="display:none; margin-top:12px;">
+        <div class="d-flex align-center gap-1 mb-1" style="justify-content:space-between;">
+          <span class="field-label" style="margin:0;">Base64 Output</span>
+          <div class="d-flex gap-1">
+            <button class="copy-btn" id="encCopyBtn">Copy</button>
+            <button class="btn btn-ghost btn-sm" id="encDownloadBtn">Download .txt</button>
+          </div>
+        </div>
+        <textarea id="encOutput" class="mono w-full" rows="6" readonly style="resize:vertical; background:var(--code-bg); font-size:12px;"></textarea>
+      </div>
+    </div>
+
+    <!-- Decode panel -->
+    <div id="decodePanel" class="card" style="display:none;">
+      <div class="field">
+        <label class="field-label">Base64 String</label>
+        <textarea id="decInput" class="mono w-full" rows="6" placeholder="Dán chuỗi Base64 vào đây..." spellcheck="false" style="resize:vertical;"></textarea>
+      </div>
+      <div class="row">
+        <div class="flex-1">
+          <label class="field-label">MIME Type</label>
+          <input type="text" id="decMime" placeholder="image/png" />
+        </div>
+        <div class="flex-1">
+          <label class="field-label">Tên file</label>
+          <input type="text" id="decFilename" placeholder="download.png" />
+        </div>
+      </div>
+      <div class="btn-group">
+        <button class="btn btn-primary" id="decDownloadBtn">Giải mã & Tải về</button>
+      </div>
+    </div>
   `;
 }
 
-export function initBase64File() {
-    const MAX_FILE_SIZE_MB = 10;
-    const MAX_FILE_SIZE_BYTES = MAX_FILE_SIZE_MB * 1024 * 1024;
+export function init() {
+  const MAX = 10 * 1024 * 1024;
+  const modeBtns = document.querySelectorAll('.mode-btn');
+  const encodePanel = document.getElementById('encodePanel');
+  const decodePanel = document.getElementById('decodePanel');
 
-    const encodeBtn = document.getElementById('b64-mode-encode');
-    const decodeBtn = document.getElementById('b64-mode-decode');
-    const panel = document.getElementById('b64-panel');
+  modeBtns.forEach((btn) => {
+    btn.addEventListener('click', () => {
+      modeBtns.forEach((b) => {
+        b.classList.remove('active', 'btn-primary');
+        b.classList.add('btn-secondary');
+      });
+      btn.classList.add('active', 'btn-primary');
+      btn.classList.remove('btn-secondary');
+      const isEncode = btn.dataset.mode === 'encode';
+      encodePanel.style.display = isEncode ? '' : 'none';
+      decodePanel.style.display = isEncode ? 'none' : '';
+    });
+  });
 
-    const setMode = (isEncode) => {
-        if (isEncode) {
-            encodeBtn.classList.remove('ghost');
-            decodeBtn.classList.add('ghost');
-            panel.innerHTML = `
-                <div class="drop-zone">
-                  <p>Kéo thả file vào đây, quá trình mã hóa sẽ tự động bắt đầu</p>
-                  <input type="file" id="b64-file-in" class="hidden-input">
-                </div>
-                <label for="b64-out" style="margin-top:15px;">Chuỗi Base64</label>
-                <textarea id="b64-out" readonly style="height:150px;" placeholder="Kết quả Base64 sẽ hiện ở đây..."></textarea>
-            `;
-            setupDragDrop(panel, 'b64-file-in', (file) => {
-                const reader = new FileReader();
-                reader.onload = (e) => {
-                    const dataUrl = e.target.result;
-                    const base64String = dataUrl.split(',')[1];
-                    document.getElementById('b64-out').value = base64String;
-                    showToast('Mã hóa file thành công!', 'success');
-                };
-                reader.onerror = () => showToast('Không thể đọc file.', 'error');
-                reader.readAsDataURL(file);
-            }, MAX_FILE_SIZE_BYTES);
-        } else {
-            decodeBtn.classList.remove('ghost');
-            encodeBtn.classList.add('ghost');
-            panel.innerHTML = `
-                <label for="b64-in">Dán chuỗi Base64 vào đây</label>
-                <textarea id="b64-in" style="height:150px;"></textarea>
-                <div class="row">
-                    <div style="flex:1;"><label for="b64-mime">MIME Type</label><input type="text" id="b64-mime" placeholder="ví dụ: image/png"></div>
-                    <div style="flex:1;"><label for="b64-filename">Tên file</label><input type="text" id="b64-filename" placeholder="download.png"></div>
-                </div>
-                <div class="row">
-                  <button class="btn" id="b64-decode-btn"><i class="ph-bold ph-arrow-up"></i> Giải mã & Tải về</button>
-                </div>
-            `;
-            const mimeInput = document.getElementById('b64-mime');
-            const filenameInput = document.getElementById('b64-filename');
-            mimeInput.addEventListener('input', () => {
-                const mime = mimeInput.value.trim();
-                if (mime.includes('/')) {
-                    const ext = mime.split('/')[1];
-                    filenameInput.placeholder = `download.${ext}`;
-                }
-            });
-            document.getElementById('b64-decode-btn').addEventListener('click', decodeBase64ToFile);
-        }
+  // ── Encode ──────────────────────────────────────────────────────────────
+  const fileInput = document.getElementById('encFileInput');
+  const dropZone = document.getElementById('encDropZone');
+  const encInfo = document.getElementById('encInfo');
+  const encResult = document.getElementById('encResult');
+  const encOutput = document.getElementById('encOutput');
+  const encCopyBtn = document.getElementById('encCopyBtn');
+  const encDlBtn = document.getElementById('encDownloadBtn');
+
+  const encodeFile = (file) => {
+    if (file.size > MAX) {
+      window.showToast('File vượt quá 10 MB.', 'error');
+      return;
+    }
+    encInfo.textContent = `${file.name} (${(file.size / 1024).toFixed(1)} KB)`;
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const base64 = e.target.result.split(',')[1];
+      encOutput.value = base64;
+      encResult.style.display = 'block';
     };
+    reader.onerror = () => window.showToast('Không thể đọc file.', 'error');
+    reader.readAsDataURL(file);
+  };
 
-    encodeBtn.addEventListener('click', () => setMode(true));
-    decodeBtn.addEventListener('click', () => setMode(false));
+  fileInput.addEventListener('change', () => {
+    if (fileInput.files[0]) encodeFile(fileInput.files[0]);
+  });
 
-    setMode(true);
-}
+  dropZone.addEventListener('click', () => fileInput.click());
 
-function decodeBase64ToFile() {
-    const base64String = document.getElementById('b64-in').value;
-    const mimeType = document.getElementById('b64-mime').value || 'application/octet-stream';
-    const filenameInput = document.getElementById('b64-filename');
-    let filename = filenameInput.value.trim();
+  // Drag-drop
+  dropZone.addEventListener('dragover', (e) => {
+    e.preventDefault();
+    dropZone.classList.add('drag-over');
+  });
+  dropZone.addEventListener('dragleave', () => dropZone.classList.remove('drag-over'));
+  dropZone.addEventListener('drop', (e) => {
+    e.preventDefault();
+    dropZone.classList.remove('drag-over');
+    const file = e.dataTransfer.files[0];
+    if (file) encodeFile(file);
+  });
 
-    if (!filename) {
-        filename = filenameInput.placeholder || 'download';
+  encCopyBtn.addEventListener('click', () => {
+    window.copyToClipboard(encOutput.value, encCopyBtn);
+  });
+
+  encDlBtn.addEventListener('click', () => {
+    const blob = new Blob([encOutput.value], { type: 'text/plain' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'base64.txt';
+    a.click();
+    URL.revokeObjectURL(url);
+  });
+
+  // ── Decode ──────────────────────────────────────────────────────────────
+  const decInput = document.getElementById('decInput');
+  const decMime = document.getElementById('decMime');
+  const decFilename = document.getElementById('decFilename');
+  const decDlBtn = document.getElementById('decDownloadBtn');
+
+  decMime.addEventListener('input', () => {
+    const ext = decMime.value.split('/')[1];
+    if (ext) decFilename.placeholder = `download.${ext}`;
+  });
+
+  decDlBtn.addEventListener('click', () => {
+    const b64 = decInput.value.trim();
+    if (!b64) {
+      window.showToast('Nhập Base64 trước.', 'error');
+      return;
     }
-
-    if (!base64String.trim()) return showToast('Vui lòng nhập chuỗi Base64.', 'error');
-
+    const mime = decMime.value.trim() || 'application/octet-stream';
+    const name = decFilename.value.trim() || decFilename.placeholder || 'download';
     try {
-        const dataUrl = `data:${mimeType};base64,${base64String}`;
-        const blob = dataURLtoBlob(dataUrl);
-        downloadBlob(blob, filename);
-        showToast('Giải mã và tải file thành công!', 'success');
-    } catch (e) {
-        showToast('Chuỗi Base64 không hợp lệ.', 'error');
+      const byteStr = atob(b64);
+      const bytes = new Uint8Array(byteStr.length);
+      for (let i = 0; i < byteStr.length; i++) bytes[i] = byteStr.charCodeAt(i);
+      const blob = new Blob([bytes], { type: mime });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = name;
+      a.click();
+      URL.revokeObjectURL(url);
+      window.showToast('Tải file thành công!', 'success');
+    } catch {
+      window.showToast('Chuỗi Base64 không hợp lệ.', 'error');
     }
+  });
 }

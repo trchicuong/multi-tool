@@ -1,23 +1,22 @@
 {
-  "name": "multi-tool",
-  "version": "1.0.0",
-  "description": "",
-  "main": "index.js",
+  "name": "multi-tool-v2",
+  "version": "2.0.0",
+  "description": "Multi Tool - A minimalist client-side toolbox",
   "scripts": {
     "dev": "vite",
-    "build": "vite build"
+    "build": "vite build",
+    "preview": "vite preview"
   },
   "keywords": [],
-  "author": "",
-  "license": "ISC",
+  "author": "trchicuong",
+  "license": "MIT",
   "devDependencies": {
-    "vite": "^5.3.3"
+    "vite": "^5.4.21"
   },
   "dependencies": {
     "@faker-js/faker": "^9.9.0",
-    "chart.js": "^4.5.0",
-    "cronstrue": "^3.2.0",
-    "diff": "^8.0.2",
-    "papaparse": "^5.5.3"
+    "diff": "^8.0.4",
+    "papaparse": "^5.5.3",
+    "qrcode": "^1.5.4"
   }
 }

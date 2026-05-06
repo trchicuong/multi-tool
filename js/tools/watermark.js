@@ -1,257 +1,326 @@
-import { setupDragDrop } from '../ui.js';
-import { downloadBlob, dataURLtoBlob } from '../utils.js';
+/**
+ * Watermark — add text or image watermark to photos
+ */
 
-export function getWatermarkHtml() {
-    return `
-    <style>
-      .position-grid{display:grid;grid-template-columns:repeat(3, 1fr);gap:8px;margin-top:8px;}
-      .position-grid label{display:flex;align-items:center;justify-content:center;border:1px solid var(--border-color);border-radius:6px;padding:10px;cursor:pointer;transition:all 0.2s ease;}
-      .position-grid input:checked + label{background-color:var(--primary-color);color:white;border-color:var(--primary-color);}
-      .position-grid input{display:none;}
-      .hidden{display:none;}
-    </style>
-    <h3>Đóng dấu ảnh (Watermark)</h3>
-    <p>Tải ảnh gốc, sau đó tùy chỉnh và thêm watermark dạng chữ hoặc hình ảnh.</p>
-    
-    <h4>1. Tải ảnh gốc</h4>
-    <div class="drop-zone" id="base-drop-zone">
-      <p>Kéo thả ảnh gốc vào đây</p>
-      <input type="file" id="wm-base-img" accept="image/*" class="hidden-input">
+export function getHtml() {
+  return `
+    <div class="tool-header">
+      <h1>Watermark</h1>
+      <p>Thêm watermark văn bản hoặc logo vào ảnh. Xuất kết quả dưới dạng PNG/JPEG.</p>
     </div>
-    <div id="base-image-preview-container" class="result" style="text-align:center; display:none; margin-top:15px;"></div>
 
-    <div id="main-controls" style="display:none;">
-      <h4>2. Tùy chỉnh Watermark</h4>
-      <div class="row" style="flex-wrap: wrap;">
-        <label style="flex-basis: 100%; margin-bottom: 0;">Loại Watermark:</label>
-        <div class="radio-options-group">
-            <div class="checkbox-group"><input type="radio" id="type-text" name="wm-type" value="text" checked><label for="type-text">Chữ (Text)</label></div>
-            <div class="checkbox-group"><input type="radio" id="type-image" name="wm-type" value="image"><label for="type-image">Ảnh (Image)</label></div>
-        </div>
+    <!-- Upload source image -->
+    <div class="card">
+      <div class="drop-zone" id="wmDropZone">
+        <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
+        <p class="text-muted text-sm mt-1">Kéo ảnh gốc vào đây hoặc click để chọn (tối đa 10MB)</p>
+        <input type="file" id="wmFileInput" accept="image/*" style="display:none;" />
       </div>
-      <div id="text-options">
-        <div class="row">
-          <div style="flex:2"><label for="wm-text">Nội dung</label><input id="wm-text" type="text" value="© Multi Tool"></div>
-          <div style="flex:1"><label for="wm-font-size">Cỡ chữ</label><input id="wm-font-size" type="number" value="48"></div>
-        </div>
-        <div class="row">
-          <div style="flex:1"><label for="wm-font">Font chữ</label><select id="wm-font"><option>Arial</option><option>Times New Roman</option><option>Courier New</option><option>Verdana</option></select></div>
-          <div style="flex:1"><label for="wm-color">Màu chữ</label><input id="wm-color" type="color" value="#FFFFFF" style="height:42px; padding: 4px;"></div>
-        </div>
-      </div>
-      <div id="image-options" class="hidden">
-        <label>Tải ảnh làm watermark (logo...)</label>
-        <div class="drop-zone" id="watermark-drop-zone"><p>Kéo thả ảnh watermark vào đây</p><input type="file" id="wm-image-img" accept="image/*" class="hidden-input"></div>
-      </div>
-      
-      <h4>3. Tùy chỉnh hiển thị</h4>
-      <div class="row">
-        <div style="flex:1"><label for="wm-opacity">Độ mờ (0-1)</label><input id="wm-opacity" type="range" value="0.7" step="0.1" min="0" max="1"></div>
-        <div style="flex:1"><label for="wm-rotation">Góc xoay (°)</label><input id="wm-rotation" type="range" value="0" step="5" min="-180" max="180"></div>
-      </div>
-      <div class="row"><input type="checkbox" id="wm-tile"><label for="wm-tile">Lặp lại trên toàn bộ ảnh (Tiling)</label></div>
-      <div id="position-options">
-        <label>Vị trí</label>
-        <div class="position-grid">
-          <input type="radio" id="pos-tl" name="position" value="top-left"><label for="pos-tl">Trên-Trái</label>
-          <input type="radio" id="pos-tc" name="position" value="top-center"><label for="pos-tc">Trên-Giữa</label>
-          <input type="radio" id="pos-tr" name="position" value="top-right"><label for="pos-tr">Trên-Phải</label>
-          <input type="radio" id="pos-ml" name="position" value="middle-left"><label for="pos-ml">Giữa-Trái</label>
-          <input type="radio" id="pos-mc" name="position" value="middle-center"><label for="pos-mc">Giữa</label>
-          <input type="radio" id="pos-mr" name="position" value="middle-right"><label for="pos-mr">Giữa-Phải</label>
-          <input type="radio" id="pos-bl" name="position" value="bottom-left"><label for="pos-bl">Dưới-Trái</label>
-          <input type="radio" id="pos-bc" name="position" value="bottom-center"><label for="pos-bc">Dưới-Giữa</label>
-          <input type="radio" id="pos-br" name="position" value="bottom-right" checked><label for="pos-br">Dưới-Phải</label>
-        </div>
-      </div>
-      <div class="row"><button class="btn" id="addWmBtn"><i class="ph-bold ph-stamp"></i> Đóng dấu & Tải về</button></div>
     </div>
-    <div id="wm-result" style="text-align:center; margin-top:15px;"></div>
+
+    <div id="wmMain" style="display:none;">
+      <div class="row mt-2" style="align-items:flex-start; flex-wrap:wrap; gap:16px;">
+        <!-- Preview -->
+        <div class="card flex-1" style="min-width:220px; text-align:center; overflow:auto;">
+          <canvas id="wmCanvas" style="max-width:100%; max-height:400px; border-radius:4px;"></canvas>
+        </div>
+
+        <!-- Controls -->
+        <div class="card" style="min-width:260px; width:300px; flex:0 0 300px;">
+
+          <!-- Mode -->
+          <div class="field-label">Loại watermark</div>
+          <div class="btn-group mt-1" style="margin-bottom:12px;">
+            <button class="btn btn-secondary wm-mode-btn active" data-mode="text">Văn bản</button>
+            <button class="btn btn-secondary wm-mode-btn" data-mode="image">Logo/Ảnh</button>
+          </div>
+
+          <!-- Text mode -->
+          <div id="wmTextControls">
+            <div class="field">
+              <label class="field-label">Nội dung</label>
+              <input type="text" id="wmText" value="© My Brand" spellcheck="false" />
+            </div>
+            <div class="row mt-1" style="gap:10px;">
+              <div class="flex-1">
+                <label class="field-label">Cỡ chữ (px)</label>
+                <input type="number" id="wmFontSize" value="32" min="8" max="200" />
+              </div>
+              <div class="flex-1">
+                <label class="field-label">Font</label>
+                <select id="wmFont">
+                  <option value="Arial">Arial</option>
+                  <option value="Georgia">Georgia</option>
+                  <option value="Courier New">Courier New</option>
+                  <option value="Times New Roman">Times New Roman</option>
+                  <option value="Verdana">Verdana</option>
+                </select>
+              </div>
+            </div>
+            <div class="row mt-1" style="gap:10px; align-items:flex-end;">
+              <div>
+                <label class="field-label">Màu</label>
+                <input type="color" id="wmColor" value="#ffffff"
+                  style="width:60px; height:36px; cursor:pointer; padding:2px; border-radius:4px;" />
+              </div>
+              <div class="flex-1">
+                <label class="field-label">Opacity (%)</label>
+                <input type="number" id="wmOpacity" value="60" min="1" max="100" />
+              </div>
+            </div>
+          </div>
+
+          <!-- Image mode -->
+          <div id="wmImageControls" style="display:none;">
+            <div class="drop-zone" id="wmLogoZone" style="padding:12px;">
+              <p class="text-muted text-sm">Kéo logo/ảnh vào đây</p>
+              <input type="file" id="wmLogoInput" accept="image/*" style="display:none;" />
+            </div>
+            <div class="field mt-1">
+              <label class="field-label">Kích thước (%)</label>
+              <input type="range" id="wmLogoSize" min="5" max="80" value="20" style="width:100%;" />
+              <span id="wmLogoSizeVal" class="mono text-sm">20%</span>
+            </div>
+            <div class="field mt-1">
+              <label class="field-label">Opacity (%)</label>
+              <input type="number" id="wmLogoOpacity" value="80" min="1" max="100" />
+            </div>
+          </div>
+
+          <!-- Position -->
+          <div class="field mt-2">
+            <label class="field-label">Vị trí</label>
+            <select id="wmPosition">
+              <option value="bottom-right">Góc dưới phải</option>
+              <option value="bottom-left">Góc dưới trái</option>
+              <option value="top-right">Góc trên phải</option>
+              <option value="top-left">Góc trên trái</option>
+              <option value="center">Giữa</option>
+              <option value="tile">Lặp (tile)</option>
+            </select>
+          </div>
+
+          <!-- Margin -->
+          <div class="field mt-1">
+            <label class="field-label">Padding (px)</label>
+            <input type="number" id="wmPadding" value="20" min="0" max="200" />
+          </div>
+
+          <button class="btn btn-ghost btn-sm w-full mt-2" id="wmPreviewBtn">↺ Update preview</button>
+          <div class="row mt-2">
+            <button class="btn btn-primary flex-1" id="wmDownloadPng">Download PNG</button>
+            <button class="btn btn-secondary flex-1" id="wmDownloadJpeg">Download JPEG</button>
+          </div>
+        </div>
+      </div>
+    </div>
   `;
 }
 
-export function initWatermark() {
-    const MAX_BASE_IMAGE_SIZE_MB = 10;
-    const MAX_WATERMARK_IMAGE_SIZE_MB = 2;
+export function init() {
+  const dropZone = document.getElementById('wmDropZone');
+  const fileInput = document.getElementById('wmFileInput');
+  const mainEl = document.getElementById('wmMain');
+  const canvas = document.getElementById('wmCanvas');
+  const ctx = canvas.getContext('2d');
+  const previewBtn = document.getElementById('wmPreviewBtn');
+  const logoZone = document.getElementById('wmLogoZone');
+  const logoInput = document.getElementById('wmLogoInput');
+  const logoSize = document.getElementById('wmLogoSize');
+  const logoSizeVal = document.getElementById('wmLogoSizeVal');
 
-    const panel = document.getElementById('panel');
-    const textOptions = document.getElementById('text-options');
-    const imageOptions = document.getElementById('image-options');
-    const positionOptions = document.getElementById('position-options');
-    const tileCheckbox = document.getElementById('wm-tile');
-    const mainControls = document.getElementById('main-controls');
-    const baseImagePreviewContainer = document.getElementById('base-image-preview-container');
-    const resultDiv = document.getElementById('wm-result');
+  let sourceImg = null,
+    logoImg = null,
+    mode = 'text';
 
-    let baseImageFile = null;
-    let watermarkImageFile = null;
-
-    document.querySelectorAll('input[name="wm-type"]').forEach(radio => {
-        radio.addEventListener('change', (e) => {
-            const isText = e.target.value === 'text';
-            textOptions.classList.toggle('hidden', !isText);
-            imageOptions.classList.toggle('hidden', isText);
-        });
+  // Mode toggle
+  document.querySelectorAll('.wm-mode-btn').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('.wm-mode-btn').forEach((b) => b.classList.remove('active'));
+      btn.classList.add('active');
+      mode = btn.dataset.mode;
+      document.getElementById('wmTextControls').style.display = mode === 'text' ? '' : 'none';
+      document.getElementById('wmImageControls').style.display = mode === 'image' ? '' : 'none';
     });
+  });
 
-    tileCheckbox.addEventListener('change', (e) => {
-        positionOptions.classList.toggle('hidden', e.target.checked);
-    });
+  const loadSource = (file) => {
+    if (!file.type.startsWith('image/')) return;
+    if (file.size > 10 * 1024 * 1024) {
+      window.showToast('File quá lớn', 'error');
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const img = new Image();
+      img.onload = () => {
+        sourceImg = img;
+        draw();
+        mainEl.style.display = '';
+      };
+      img.src = e.target.result;
+    };
+    reader.readAsDataURL(file);
+  };
 
-    setupDragDrop(panel, 'wm-base-img', (file) => {
-        baseImageFile = file;
-        const reader = new FileReader();
-        reader.onload = e => {
-            baseImagePreviewContainer.innerHTML = `<img class="preview" src="${e.target.result}" alt="Ảnh gốc">`;
-            baseImagePreviewContainer.style.display = 'block';
-            mainControls.style.display = 'block';
-            resultDiv.innerHTML = '';
-        };
-        reader.readAsDataURL(file);
-    }, MAX_BASE_IMAGE_SIZE_MB * 1024 * 1024);
+  const loadLogo = (file) => {
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const img = new Image();
+      img.onload = () => {
+        logoImg = img;
+        draw();
+      };
+      img.src = e.target.result;
+    };
+    reader.readAsDataURL(file);
+  };
 
-    setupDragDrop(panel, 'wm-image-img', (file) => {
-        watermarkImageFile = file;
-    }, MAX_WATERMARK_IMAGE_SIZE_MB * 1024 * 1024);
+  dropZone.addEventListener('click', () => fileInput.click());
+  fileInput.addEventListener('change', () => {
+    if (fileInput.files[0]) loadSource(fileInput.files[0]);
+  });
+  dropZone.addEventListener('dragover', (e) => {
+    e.preventDefault();
+    dropZone.classList.add('drag-over');
+  });
+  dropZone.addEventListener('dragleave', () => dropZone.classList.remove('drag-over'));
+  dropZone.addEventListener('drop', (e) => {
+    e.preventDefault();
+    dropZone.classList.remove('drag-over');
+    if (e.dataTransfer.files[0]) loadSource(e.dataTransfer.files[0]);
+  });
 
-    document.getElementById('addWmBtn').addEventListener('click', async () => {
-        const settings = {
-            text: document.getElementById('wm-text').value,
-            fontSize: parseInt(document.getElementById('wm-font-size').value) || 48,
-            font: document.getElementById('wm-font').value,
-            color: document.getElementById('wm-color').value,
-            opacity: parseFloat(document.getElementById('wm-opacity').value) || 0.7,
-            rotation: parseInt(document.getElementById('wm-rotation').value) || 0,
-            isTiled: tileCheckbox.checked,
-            position: document.querySelector('input[name="position"]:checked').value,
-        };
-        const watermarkType = document.querySelector('input[name="wm-type"]:checked').value;
+  logoZone.addEventListener('click', () => logoInput.click());
+  logoInput.addEventListener('change', () => {
+    if (logoInput.files[0]) loadLogo(logoInput.files[0]);
+  });
+  logoZone.addEventListener('dragover', (e) => {
+    e.preventDefault();
+    logoZone.classList.add('drag-over');
+  });
+  logoZone.addEventListener('dragleave', () => logoZone.classList.remove('drag-over'));
+  logoZone.addEventListener('drop', (e) => {
+    e.preventDefault();
+    logoZone.classList.remove('drag-over');
+    if (e.dataTransfer.files[0]) loadLogo(e.dataTransfer.files[0]);
+  });
+  logoSize.addEventListener('input', () => {
+    logoSizeVal.textContent = logoSize.value + '%';
+  });
 
-        if (!baseImageFile) return showToast('Vui lòng chọn ảnh gốc.', 'error');
+  const getPos = (w, h, wmW, wmH) => {
+    const pos = document.getElementById('wmPosition').value;
+    const pad = parseInt(document.getElementById('wmPadding').value) || 20;
+    switch (pos) {
+      case 'bottom-right':
+        return { x: w - wmW - pad, y: h - wmH - pad };
+      case 'bottom-left':
+        return { x: pad, y: h - wmH - pad };
+      case 'top-right':
+        return { x: w - wmW - pad, y: pad };
+      case 'top-left':
+        return { x: pad, y: pad };
+      case 'center':
+        return { x: (w - wmW) / 2, y: (h - wmH) / 2 };
+      default:
+        return { x: w - wmW - pad, y: h - wmH - pad };
+    }
+  };
 
-        try {
-            const baseImage = await loadImage(baseImageFile);
-            let watermarkSource = null;
+  const draw = () => {
+    if (!sourceImg) return;
+    canvas.width = sourceImg.naturalWidth;
+    canvas.height = sourceImg.naturalHeight;
+    ctx.drawImage(sourceImg, 0, 0);
 
-            if (watermarkType === 'image') {
-                if (!watermarkImageFile) return showToast('Vui lòng chọn ảnh watermark.', 'error');
-                watermarkSource = await loadImage(watermarkImageFile);
-            } else {
-                if (!settings.text.trim()) return showToast('Vui lòng nhập nội dung watermark.', 'error');
-                watermarkSource = settings.text;
-            }
+    const pos = document.getElementById('wmPosition').value;
+    const pad = parseInt(document.getElementById('wmPadding').value) || 20;
 
-            const canvas = document.createElement('canvas');
-            canvas.width = baseImage.width;
-            canvas.height = baseImage.height;
-            const ctx = canvas.getContext('2d');
+    if (mode === 'text') {
+      const text = document.getElementById('wmText').value || '© Watermark';
+      const fontSize = parseInt(document.getElementById('wmFontSize').value) || 32;
+      const font = document.getElementById('wmFont').value;
+      const color = document.getElementById('wmColor').value;
+      const opacity = (parseInt(document.getElementById('wmOpacity').value) || 60) / 100;
 
-            ctx.drawImage(baseImage, 0, 0);
-            ctx.globalAlpha = settings.opacity;
+      ctx.save();
+      ctx.font = `${fontSize}px ${font}`;
+      ctx.globalAlpha = opacity;
+      const met = ctx.measureText(text);
+      const wmW = met.width,
+        wmH = fontSize;
 
-            if (settings.isTiled) {
-                drawTiledWatermark(ctx, watermarkSource, settings);
-            } else {
-                drawSingleWatermark(ctx, watermarkSource, settings);
-            }
-
-            const dataUrl = canvas.toDataURL(baseImageFile.type);
-            downloadBlob(dataURLtoBlob(dataUrl), `watermarked-${baseImageFile.name}`);
-            resultDiv.innerHTML = `<div>Đã đóng dấu và tải về!</div><img class="preview" src="${dataUrl}">`;
-            showToast('Đóng dấu ảnh thành công!', 'success');
-        } catch (error) {
-            showToast(`Đã xảy ra lỗi: ${error.message}`, 'error');
+      if (pos === 'tile') {
+        ctx.fillStyle = color;
+        for (let y = 0; y < canvas.height; y += wmH * 3) {
+          for (let x = 0; x < canvas.width; x += wmW + 60) {
+            ctx.fillText(text, x, y + wmH);
+          }
         }
-    });
-}
+      } else {
+        const { x, y } = getPos(canvas.width, canvas.height, wmW, wmH);
+        ctx.fillStyle = color;
+        ctx.fillText(text, x, y + wmH);
+      }
+      ctx.restore();
+    } else if (mode === 'image' && logoImg) {
+      const opacity = (parseInt(document.getElementById('wmLogoOpacity').value) || 80) / 100;
+      const pct = parseInt(logoSize.value) / 100;
+      const wmW = canvas.width * pct;
+      const wmH = wmW * (logoImg.naturalHeight / logoImg.naturalWidth);
 
-function loadImage(file) {
-    return new Promise((resolve, reject) => {
-        if (!file) return reject(new Error('No file provided'));
-        const reader = new FileReader();
-        reader.onload = e => {
-            const img = new Image();
-            img.onload = () => resolve(img);
-            img.onerror = reject;
-            img.src = e.target.result;
-        };
-        reader.onerror = reject;
-        reader.readAsDataURL(file);
-    });
-}
-
-function drawSingleWatermark(ctx, source, settings) {
-    const { width, height } = ctx.canvas;
-    const margin = 20;
-
-    let sourceWidth, sourceHeight;
-    if (typeof source === 'string') {
-        ctx.fillStyle = settings.color;
-        ctx.font = `${settings.fontSize}px ${settings.font}`;
-        const metrics = ctx.measureText(source);
-        sourceWidth = metrics.width;
-        sourceHeight = settings.fontSize;
-    } else {
-        sourceWidth = source.width;
-        sourceHeight = source.height;
-    }
-
-    let x, y;
-    if (settings.position.includes('left')) { ctx.textAlign = 'left'; x = margin; }
-    else if (settings.position.includes('center')) { ctx.textAlign = 'center'; x = width / 2; }
-    else { ctx.textAlign = 'right'; x = width - margin; }
-
-    if (settings.position.includes('top')) { ctx.textBaseline = 'top'; y = margin; }
-    else if (settings.position.includes('middle')) { ctx.textBaseline = 'middle'; y = height / 2; }
-    else { ctx.textBaseline = 'bottom'; y = height - margin; }
-
-    ctx.save();
-    ctx.translate(x, y);
-    ctx.rotate(settings.rotation * Math.PI / 180);
-
-    if (typeof source === 'string') {
-        ctx.fillText(source, 0, 0);
-    } else {
-        let drawX = 0, drawY = 0;
-        if (ctx.textAlign === 'center') drawX = -sourceWidth / 2;
-        if (ctx.textAlign === 'right') drawX = -sourceWidth;
-        if (ctx.textBaseline === 'middle') drawY = -sourceHeight / 2;
-        if (ctx.textBaseline === 'bottom') drawY = -sourceHeight;
-        ctx.drawImage(source, drawX, drawY);
-    }
-
-    ctx.restore();
-}
-
-function drawTiledWatermark(ctx, source, settings) {
-    ctx.save();
-    const padding = 100;
-    let itemWidth, itemHeight;
-    if (typeof source === 'string') {
-        ctx.fillStyle = settings.color;
-        ctx.font = `${settings.fontSize}px ${settings.font}`;
-        const metrics = ctx.measureText(source);
-        itemWidth = metrics.width + padding;
-        itemHeight = settings.fontSize + padding;
-    } else {
-        itemWidth = source.width + padding;
-        itemHeight = source.height + padding;
-    }
-
-    const centerX = ctx.canvas.width / 2;
-    const centerY = ctx.canvas.height / 2;
-    ctx.translate(centerX, centerY);
-    ctx.rotate(settings.rotation * Math.PI / 180);
-    ctx.translate(-centerX, -centerY);
-
-    for (let x = -itemWidth; x < ctx.canvas.width + itemWidth; x += itemWidth) {
-        for (let y = -itemHeight; y < ctx.canvas.height + itemHeight; y += itemHeight) {
-            if (typeof source === 'string') {
-                ctx.fillText(source, x, y);
-            } else {
-                ctx.drawImage(source, x, y);
-            }
+      ctx.save();
+      ctx.globalAlpha = opacity;
+      if (pos === 'tile') {
+        for (let y = 0; y < canvas.height; y += wmH + 40) {
+          for (let x = 0; x < canvas.width; x += wmW + 40) {
+            ctx.drawImage(logoImg, x, y, wmW, wmH);
+          }
         }
+      } else {
+        const { x, y } = getPos(canvas.width, canvas.height, wmW, wmH);
+        ctx.drawImage(logoImg, x, y, wmW, wmH);
+      }
+      ctx.restore();
     }
-    ctx.restore();
+  };
+
+  previewBtn.addEventListener('click', draw);
+
+  // Auto-update on input changes
+  [
+    'wmText',
+    'wmFontSize',
+    'wmFont',
+    'wmColor',
+    'wmOpacity',
+    'wmPosition',
+    'wmPadding',
+    'wmLogoOpacity',
+  ].forEach((id) => {
+    const el = document.getElementById(id);
+    if (el) el.addEventListener('change', draw);
+  });
+
+  const download = (fmt, ext, q = 0.92) => {
+    canvas.toBlob(
+      (blob) => {
+        const a = document.createElement('a');
+        a.href = URL.createObjectURL(blob);
+        a.download = `watermarked.${ext}`;
+        a.click();
+        URL.revokeObjectURL(a.href);
+      },
+      fmt,
+      q,
+    );
+  };
+
+  document
+    .getElementById('wmDownloadPng')
+    .addEventListener('click', () => download('image/png', 'png'));
+  document
+    .getElementById('wmDownloadJpeg')
+    .addEventListener('click', () => download('image/jpeg', 'jpg', 0.92));
 }

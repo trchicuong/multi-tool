@@ -1,231 +1,165 @@
-import { showToast } from '../ui.js';
-import { downloadBlob } from '../utils.js';
+/**
+ * Link Shortener — uses is.gd API + local history
+ */
 
-export function getLinkShortenerHtml() {
-    return `
-    <h3>Rút gọn & Thống kê Link (spoo.me)</h3>
-    <p>Tạo link rút gọn với các tùy chọn nâng cao, sau đó kiểm tra thống kê của link.</p>
-    
-    <label for="long-url-input">URL cần rút gọn:</label>
-    <input type="text" id="long-url-input" placeholder="https://example.com/long-url-to-shorten">
-
-    <h4>Tùy chọn nâng cao khi rút gọn (không bắt buộc)</h4>
-    <div class="row">
-        <div style="flex: 1;">
-            <label for="alias-input">Alias (tên tùy chỉnh)</label>
-            <input type="text" id="alias-input" placeholder="my-custom-link">
-        </div>
-        <div style="flex: 1;">
-            <label for="password-input">Mật khẩu</label>
-            <input type="text" id="password-input" placeholder="Mật khẩu bảo vệ">
-        </div>
-    </div>
-    <div class="row">
-        <div style="flex: 1;">
-            <label for="max-clicks-input">Số lần click tối đa</label>
-            <input type="number" id="max-clicks-input" min="0" placeholder="0 = không giới hạn">
-        </div>
-        <div style="flex: 1;" class="checkbox-group">
-             <input type="checkbox" id="block-bots-checkbox">
-             <label for="block-bots-checkbox">Chặn bots</label>
-        </div>
-    </div>
-    
-    <div class="row">
-         <button id="shorten-btn" class="btn">Rút gọn</button>
+export function getHtml() {
+  return `
+    <div class="tool-header">
+      <h1>Link Shortener</h1>
+      <p>Rút gọn URL dài bằng is.gd. Lịch sử lưu trong trình duyệt.</p>
     </div>
 
-    <div id="result-area" class="result" style="display: none; margin-top: 20px;">
-        <p><strong>Link đã rút gọn:</strong></p>
-        <div class="result-grid" style="grid-template-columns: 1fr auto;">
-            <div class="grid-item">
-                <a id="short-url-output" href="#" target="_blank" class="grid-item-value" style="font-size: 1.1em;"></a>
-            </div>
-            <button id="copy-short-url-btn" class="btn ghost"><i class="ph-bold ph-copy"></i></button>
+    <div class="card">
+      <div class="field">
+        <label class="field-label">URL cần rút gọn</label>
+        <div class="d-flex gap-2" style="align-items:flex-end;">
+          <input type="url" id="lsInput" class="flex-1"
+            placeholder="https://example.com/very/long/url/here"
+            spellcheck="false" autocomplete="off" />
+          <button class="btn btn-primary" id="lsShorten">Rút gọn</button>
         </div>
-    </div>
-    
-    <hr style="margin-top: 30px; margin-bottom: 20px;">
+        <div id="lsError" class="text-sm" style="color:var(--danger,#ef4444); min-height:18px; margin-top:4px;"></div>
+      </div>
 
-    <h3>Kiểm tra Thống kê Link</h3>
-    <label for="short-code-input">Link rút gọn hoặc Short Code:</label>
-    <input type="text" id="short-code-input" placeholder="https://spoo.me/example hoặc example">
-
-    <label for="stats-password-input">Mật khẩu (nếu có):</label>
-    <input type="text" id="stats-password-input" placeholder="Mật khẩu của link">
-    
-    <div class="row">
-        <button id="get-stats-btn" class="btn"><i class="ph-bold ph-chart-bar"></i> Xem Thống kê</button>
-    </div>
-
-    <div id="stats-result-area" style="display: none; margin-top: 20px;">
-        <h4>Kết quả Thống kê</h4>
-        <div id="stats-grid" class="result-grid"></div>
-
-        <div class="row" style="margin-top: 20px; align-items: flex-end;">
-            <div style="flex: 1;">
-                <label for="export-format-select">Xuất dữ liệu:</label>
-                <select id="export-format-select">
-                    <option value="json">JSON</option>
-                    <option value="csv">CSV</option>
-                </select>
-            </div>
-            <button id="export-stats-btn" class="btn ghost"><i class="ph-bold ph-download-simple"></i> Xuất file</button>
+      <div id="lsResultWrap" style="display:none; margin-top:12px;">
+        <label class="field-label">URL đã rút gọn</label>
+        <div class="d-flex gap-2 align-center">
+          <input type="text" id="lsResult" class="flex-1 mono" readonly />
+          <button class="btn btn-secondary" id="lsCopyBtn">Copy</button>
+          <a id="lsOpenBtn" href="#" target="_blank" rel="noopener noreferrer" class="btn btn-ghost">Open</a>
         </div>
+      </div>
+    </div>
+
+    <!-- History -->
+    <div class="card mt-2" id="lsHistoryCard" style="display:none;">
+      <div class="d-flex align-center gap-1 mb-2" style="justify-content:space-between;">
+        <span class="field-label" style="margin:0;">Lịch sử</span>
+        <button class="btn btn-ghost btn-sm" id="lsClearHistory">Xoá tất cả</button>
+      </div>
+      <div id="lsHistoryList"></div>
     </div>
   `;
 }
 
-export function initLinkShortener() {
-    const longUrlInput = document.getElementById('long-url-input');
-    const aliasInput = document.getElementById('alias-input');
-    const passwordInput = document.getElementById('password-input');
-    const maxClicksInput = document.getElementById('max-clicks-input');
-    const blockBotsCheckbox = document.getElementById('block-bots-checkbox');
-    const shortenBtn = document.getElementById('shorten-btn');
-    const resultArea = document.getElementById('result-area');
-    const shortUrlOutput = document.getElementById('short-url-output');
-    const copyShortUrlBtn = document.getElementById('copy-short-url-btn');
+export function init() {
+  const input = document.getElementById('lsInput');
+  const shortenBtn = document.getElementById('lsShorten');
+  const errorEl = document.getElementById('lsError');
+  const resultWrap = document.getElementById('lsResultWrap');
+  const resultInput = document.getElementById('lsResult');
+  const copyBtn = document.getElementById('lsCopyBtn');
+  const openBtn = document.getElementById('lsOpenBtn');
+  const historyCard = document.getElementById('lsHistoryCard');
+  const historyList = document.getElementById('lsHistoryList');
+  const clearHistoryBtn = document.getElementById('lsClearHistory');
 
-    shortenBtn.addEventListener('click', async () => {
-        const longUrl = longUrlInput.value.trim();
-        if (!longUrl) {
-            showToast('Vui lòng nhập URL cần rút gọn.', 'warning');
-            return;
-        }
-        shortenBtn.disabled = true;
-        shortenBtn.textContent = 'Đang xử lý...';
-        resultArea.style.display = 'none';
-        try {
-            const bodyParams = new URLSearchParams({ url: longUrl });
-            const alias = aliasInput.value.trim();
-            if (alias) bodyParams.append('alias', alias);
-            const password = passwordInput.value.trim();
-            if (password) bodyParams.append('password', password);
-            const maxClicks = maxClicksInput.value;
-            if (maxClicks && parseInt(maxClicks, 10) > 0) bodyParams.append('max-clicks', maxClicks);
-            if (blockBotsCheckbox.checked) bodyParams.append('block-bots', 'true');
+  const STORAGE_KEY = 'ls_history';
 
-            const response = await fetch('https://spoo.me/', {
-                method: 'POST',
-                headers: { 'Accept': 'application/json', 'Content-Type': 'application/x-www-form-urlencoded' },
-                body: bodyParams
-            });
-            const data = await response.json();
-            if (response.ok) {
-                shortUrlOutput.href = data.short_url;
-                shortUrlOutput.textContent = data.short_url;
-                resultArea.style.display = 'block';
-                showToast('Tạo link thành công!', 'success');
-            } else {
-                throw new Error(data.message || 'API trả về lỗi không xác định.');
-            }
-        } catch (error) {
-            showToast(`Lỗi: ${error.message}`, 'error');
-        } finally {
-            shortenBtn.disabled = false;
-            shortenBtn.textContent = 'Rút gọn';
-        }
+  const getHistory = () => {
+    try {
+      return JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]');
+    } catch {
+      return [];
+    }
+  };
+
+  const saveHistory = (list) => {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(list.slice(0, 30)));
+  };
+
+  const renderHistory = () => {
+    const items = getHistory();
+    if (!items.length) {
+      historyCard.style.display = 'none';
+      return;
+    }
+    historyCard.style.display = '';
+    historyList.innerHTML = items
+      .map(
+        (item, i) => `
+      <div class="d-flex align-center gap-2" style="padding:6px 0; border-bottom:1px solid var(--border); flex-wrap:wrap;">
+        <div style="flex:1; min-width:0;">
+          <div class="text-sm mono" style="overflow:hidden; text-overflow:ellipsis; white-space:nowrap; color:var(--accent);">${item.short}</div>
+          <div class="text-sm text-muted" style="overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${item.original}</div>
+        </div>
+        <div class="d-flex gap-1">
+          <button class="btn btn-ghost btn-sm ls-copy-hist" data-short="${item.short}">Copy</button>
+          <button class="btn btn-ghost btn-sm ls-del" data-i="${i}">×</button>
+        </div>
+      </div>
+    `,
+      )
+      .join('');
+
+    historyList.querySelectorAll('.ls-copy-hist').forEach((btn) => {
+      btn.addEventListener('click', () => window.copyToClipboard(btn.dataset.short, btn));
     });
-
-    copyShortUrlBtn.addEventListener('click', () => {
-        const urlToCopy = shortUrlOutput.textContent;
-        if (urlToCopy) {
-            navigator.clipboard.writeText(urlToCopy).then(() => showToast('Đã sao chép link!', 'success'));
-        }
+    historyList.querySelectorAll('.ls-del').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        const list = getHistory();
+        list.splice(+btn.dataset.i, 1);
+        saveHistory(list);
+        renderHistory();
+      });
     });
+  };
 
-    const shortCodeInput = document.getElementById('short-code-input');
-    const statsPasswordInput = document.getElementById('stats-password-input');
-    const getStatsBtn = document.getElementById('get-stats-btn');
-    const exportBtn = document.getElementById('export-stats-btn');
-    const exportFormatSelect = document.getElementById('export-format-select');
-    const statsResultArea = document.getElementById('stats-result-area');
-    const statsGrid = document.getElementById('stats-grid');
+  const shorten = async () => {
+    const url = input.value.trim();
+    if (!url) {
+      errorEl.textContent = 'Nhập URL cần rút gọn';
+      return;
+    }
 
-    const getShortCode = () => {
-        let code = shortCodeInput.value.trim();
-        if (code.includes('/')) {
-            code = code.substring(code.lastIndexOf('/') + 1);
-        }
-        return code;
-    };
+    // Validate URL
+    try {
+      new URL(url);
+    } catch {
+      errorEl.textContent = 'URL không hợp lệ';
+      return;
+    }
 
-    getStatsBtn.addEventListener('click', async () => {
-        const shortCode = getShortCode();
-        if (!shortCode) {
-            showToast('Vui lòng nhập link hoặc short code.', 'warning');
-            return;
-        }
-        getStatsBtn.disabled = true;
-        getStatsBtn.innerHTML = '<i class="ph-bold ph-spinner ph-spin"></i> Đang tải...';
-        statsResultArea.style.display = 'none';
-        statsGrid.innerHTML = '';
-        try {
-            const bodyParams = new URLSearchParams();
-            if (statsPasswordInput.value.trim()) {
-                bodyParams.append('password', statsPasswordInput.value.trim());
-            }
-            const response = await fetch(`https://spoo.me/stats/${shortCode}`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-                body: bodyParams
-            });
-            const data = await response.json();
-            if (!response.ok) throw new Error(data.message || 'Lỗi không xác định.');
+    errorEl.textContent = '';
+    shortenBtn.textContent = 'Đang rút gọn...';
+    shortenBtn.disabled = true;
 
-            const statsObject = data.stats || data;
+    try {
+      const apiUrl = `https://is.gd/create.php?format=json&url=${encodeURIComponent(url)}`;
+      const res = await fetch(apiUrl);
+      if (!res.ok) throw new Error('API error');
+      const data = await res.json();
+      if (data.errorcode) throw new Error(data.errormessage || 'Lỗi API');
 
-            for (const [key, value] of Object.entries(statsObject)) {
-                const gridItem = document.createElement('div');
-                gridItem.className = 'grid-item';
-                let displayValue = value;
-                if ((key === 'created_at' || key === 'expires_at') && value) {
-                    displayValue = new Date(value).toLocaleString('vi-VN');
-                }
-                gridItem.innerHTML = `<span class="grid-item-label">${key.replace(/_/g, ' ').toUpperCase()}</span><p class="grid-item-value">${displayValue || 'N/A'}</p>`;
-                statsGrid.appendChild(gridItem);
-            }
-            statsResultArea.style.display = 'block';
-        } catch (error) {
-            showToast(`Lỗi: ${error.message}`, 'error');
-        } finally {
-            getStatsBtn.disabled = false;
-            getStatsBtn.innerHTML = '<i class="ph-bold ph-chart-bar"></i> Xem Thống kê';
-        }
-    });
+      const short = data.shorturl;
+      resultInput.value = short;
+      openBtn.href = short;
+      resultWrap.style.display = '';
 
-    exportBtn.addEventListener('click', async () => {
-        const shortCode = getShortCode();
-        const format = exportFormatSelect.value;
-        if (!shortCode) {
-            showToast('Vui lòng nhập link hoặc short code.', 'warning');
-            return;
-        }
-        exportBtn.disabled = true;
-        exportBtn.innerHTML = '<i class="ph-bold ph-spinner ph-spin"></i> Đang xuất...';
-        try {
-            const bodyParams = new URLSearchParams();
-            if (statsPasswordInput.value.trim()) {
-                bodyParams.append('password', statsPasswordInput.value.trim());
-            }
-            const response = await fetch(`https://spoo.me/export/${shortCode}/${format}`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-                body: bodyParams
-            });
-            if (!response.ok) {
-                const errorData = await response.json();
-                throw new Error(errorData.message || 'Không thể xuất file.');
-            }
-            const blob = await response.blob();
-            downloadBlob(blob, `${shortCode}-stats.${format}`);
-            showToast('Xuất file thành công!', 'success');
-        } catch (error) {
-            showToast(`Lỗi: ${error.message}`, 'error');
-        } finally {
-            exportBtn.disabled = false;
-            exportBtn.innerHTML = '<i class="ph-bold ph-download-simple"></i> Xuất file';
-        }
-    });
+      // Save to history
+      const list = getHistory();
+      list.unshift({ short, original: url, ts: Date.now() });
+      saveHistory(list);
+      renderHistory();
+
+      window.showToast('Rút gọn thành công!', 'success');
+    } catch (e) {
+      errorEl.textContent = e.message || 'Không thể rút gọn URL. Kiểm tra lại URL hoặc kết nối.';
+    } finally {
+      shortenBtn.textContent = 'Rút gọn';
+      shortenBtn.disabled = false;
+    }
+  };
+
+  shortenBtn.addEventListener('click', shorten);
+  input.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') shorten();
+  });
+  copyBtn.addEventListener('click', () => window.copyToClipboard(resultInput.value, copyBtn));
+  clearHistoryBtn.addEventListener('click', () => {
+    localStorage.removeItem(STORAGE_KEY);
+    renderHistory();
+  });
+
+  renderHistory();
 }

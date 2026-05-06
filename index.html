@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="vi">
   <head>
     <meta charset="UTF-8" />
@@ -7,285 +7,844 @@
       name="viewport"
       content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"
     />
-    <title>Multi Tool - Format Converter</title>
+    <title>Multi Tool</title>
+    <meta
+      name="description"
+      content="Bộ công cụ lập trình & tiện ích đa năng, miễn phí, chạy hoàn toàn trên trình duyệt."
+    />
+    <meta
+      name="keywords"
+      content="multi tool, developer tools, json formatter, base64, regex tester, password generator, qr generator, markdown editor, typing test, calculator, css tools"
+    />
+    <meta name="author" content="trchicuong" />
+    <meta name="theme-color" content="#6366f1" />
 
-    <link rel="apple-touch-icon" sizes="180x180" href="images/apple-touch-icon.png" />
-    <link rel="icon" type="image/png" sizes="32x32" href="images/favicon-32x32.png" />
-    <link rel="icon" type="image/png" sizes="16x16" href="images/favicon-16x16.png" />
+    <!-- Open Graph -->
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="Multi Tool — Developer Utilities" />
+    <meta
+      property="og:description"
+      content="33 browser-based tools: JSON, Regex, Base64, QR, Markdown, Typing Test, Calculator and more."
+    />
+    <meta property="og:image" content="/images/apple-touch-icon.png" />
+
+    <!-- Twitter Card -->
+    <meta name="twitter:card" content="summary" />
+    <meta name="twitter:title" content="Multi Tool — Developer Utilities" />
+    <meta name="twitter:description" content="33 browser-based tools with no backend required." />
+
+    <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon.png" />
+    <link rel="icon" type="image/png" sizes="32x32" href="/images/favicon-32x32.png" />
+    <link rel="icon" type="image/png" sizes="16x16" href="/images/favicon-16x16.png" />
     <link rel="manifest" href="/site.webmanifest" />
 
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-
     <link
       rel="preload"
-      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap"
+      href="https://fonts.googleapis.com/css2?family=Inter:ital,opsz,wght@0,14..32,300;0,14..32,400;0,14..32,500;0,14..32,600;1,14..32,400&display=swap"
       as="style"
-      onload="this.onload=null;this.rel='stylesheet'"
+      onload="
+        this.onload = null;
+        this.rel = 'stylesheet';
+      "
     />
-
     <noscript>
       <link
         rel="stylesheet"
-        href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap"
+        href="https://fonts.googleapis.com/css2?family=Inter:ital,opsz,wght@0,14..32,300;0,14..32,400;0,14..32,500;0,14..32,600;1,14..32,400&display=swap"
       />
     </noscript>
 
-    <link rel="stylesheet" href="css/style.css" />
-
-    <script src="https://unpkg.com/@phosphor-icons/web" defer></script>
-    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11" defer></script>
+    <link rel="stylesheet" href="/css/style.css" />
   </head>
 
   <body>
-    <div class="wrap">
-      <header>
-        <button class="hamburger-btn" id="hamburgerBtn"><i class="ph-bold ph-list"></i></button>
-        <img src="images/favicon-32x32.png" alt="Logo" />
-        <h1>Multi Tool</h1>
+    <!-- Sidebar overlay for mobile -->
+    <div class="backdrop" id="backdrop"></div>
 
-        <div class="header-actions">
-          <button id="reloadBtn" class="theme-toggle" title="Tải lại trang">
-            <i class="ph-bold ph-arrows-clockwise"></i>
-          </button>
-          <button class="theme-toggle" id="themeToggle" title="Chuyển đổi giao diện">
-            <i class="ph-bold ph-sun"></i>
-            <i class="ph-bold ph-moon"></i>
-          </button>
-          <button class="theme-toggle" id="layoutToggle" title="Chuyển đổi layout menu">
-            <i class="ph-bold ph-sidebar-simple"></i>
-            <i class="ph-bold ph-rows"></i>
+    <div class="app">
+      <!-- Sidebar -->
+      <aside class="sidebar" id="sidebar">
+        <div class="sidebar-top">
+          <a class="brand" href="/">
+            <img src="/images/favicon-32x32.png" alt="Logo" width="20" height="20" />
+            <span>Multi Tool</span>
+          </a>
+          <button class="icon-btn sidebar-close" id="sidebarClose" aria-label="Đóng menu">
+            <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
+              <path
+                d="M1 1l16 16M17 1L1 17"
+                stroke="currentColor"
+                stroke-width="1.5"
+                stroke-linecap="round"
+              />
+            </svg>
           </button>
         </div>
-      </header>
 
-      <main class="tools">
-        <aside class="sidebar" id="toolList">
-          <div class="sidebar-header">
-            <h3>Tools</h3>
-            <button class="close-btn" id="closeSidebarBtn">&times;</button>
-          </div>
-
-          <button data-tool="contentAnalyzer" class="active group-start">
-            <i class="ph-fill ph-chat"></i> Phân tích nội dung
-          </button>
-          <button data-tool="aiChatbot"><i class="ph-fill ph-robot"></i> AI Chatbox</button>
-          <button data-tool="codeReviewer">
-            <i class="ph-fill ph-code-block"></i> Code Reviewer
-          </button>
-          <button data-tool="errorExplainer"><i class="ph-fill ph-bug"></i> AI Debugger</button>
-          <button data-tool="unitTestGenerator">
-            <i class="ph-fill ph-test-tube"></i> Unit Test Gen
-          </button>
-          <button data-tool="sqlGenerator">
-            <i class="ph-fill ph-database"></i> SQL Generator
-          </button>
-          <button data-tool="docGenerator"><i class="ph-fill ph-scroll"></i> Doc Generator</button>
-          <button data-tool="commitMessageGenerator">
-            <i class="ph-fill ph-git-commit"></i> Commit Message
-          </button>
-          <button data-tool="grammarChecker">
-            <i class="ph-fill ph-seal-check"></i> Kiểm tra ngữ pháp
-          </button>
-
-          <button data-tool="jsonFormatter" class="group-start">
-            <i class="ph-fill ph-code"></i> JSON Formatter
-          </button>
-          <button data-tool="jsonViewer">
-            <i class="ph-fill ph-tree-structure"></i> JSON Tree Viewer
-          </button>
-          <button data-tool="diffChecker"><i class="ph-fill ph-git-diff"></i> Diff Checker</button>
-          <button data-tool="regexGenerator">
-            <i class="ph-fill ph-asterisk"></i> Regex Helper
-          </button>
-          <button data-tool="codeMinifier">
-            <i class="ph-fill ph-file-code"></i> Minify / Unminify
-          </button>
-          <button data-tool="csvJsonConverter">
-            <i class="ph-fill ph-file-csv"></i> CSV ↔ JSON
-          </button>
-          <button data-tool="htmlToJson">
-            <i class="ph-fill ph-brackets-curly"></i> HTML/XML to JSON
-          </button>
-          <button data-tool="base64Coder">
-            <i class="ph-fill ph-text-outdent"></i> Text ↔ Base64
-          </button>
-          <button data-tool="unixTimestampConverter">
-            <i class="ph-fill ph-timer"></i> Unix Timestamp
-          </button>
-
-          <button data-tool="restClient" class="group-start">
-            <i class="ph-fill ph-plugs-connected"></i> REST API Client
-          </button>
-          <button data-tool="jwtDecoder"><i class="ph-fill ph-key"></i> JWT Decoder</button>
-          <button data-tool="urlParser">
-            <i class="ph-fill ph-link-simple-break"></i> URL Parser
-          </button>
-          <button data-tool="linkShortener">
-            <i class="ph-fill ph-link-simple-horizontal"></i> Rút gọn Link
-          </button>
-          <button data-tool="nginxHelper"><i class="ph-fill ph-stack"></i> NGINX Helper</button>
-          <button data-tool="cronJobHelper">
-            <i class="ph-fill ph-clock-clockwise"></i> Cron Job Helper
-          </button>
-          <button data-tool="hashGenerator">
-            <i class="ph-fill ph-fingerprint"></i> Trình tạo Hash
-          </button>
-          <button data-tool="uuidGenerator"><i class="ph-fill ph-key"></i> UUID Generator</button>
-          <button data-tool="passwordGenerator">
-            <i class="ph-fill ph-keyhole"></i> Password Gen
-          </button>
-
-          <button data-tool="cssUnitConverter" class="group-start">
-            <i class="ph-fill ph-text-t"></i> CSS Unit Converter
-          </button>
-          <button data-tool="boxShadowGenerator">
-            <i class="ph-fill ph-square-half"></i> Box-Shadow Gen
-          </button>
-          <button data-tool="gradientGenerator">
-            <i class="ph-fill ph-paint-brush-broad"></i> CSS Gradient
-          </button>
-          <button data-tool="colorConverter">
-            <i class="ph-fill ph-paint-brush"></i> Color Converter
-          </button>
-          <button data-tool="qrGenerator"><i class="ph-fill ph-qr-code"></i> Tạo mã QR</button>
-
-          <button data-tool="imageToCodeGenerator" class="group-start">
-            <i class="ph-fill ph-image-square"></i> Image to Code
-          </button>
-          <button data-tool="imageAnalyzer">
-            <i class="ph-fill ph-image-square"></i> Phân tích ảnh
-          </button>
-          <button data-tool="imageGenerator">
-            <i class="ph-fill ph-magic-wand"></i> Tạo ảnh AI
-          </button>
-          <button data-tool="imageConverter">
-            <i class="ph-fill ph-image"></i> Chuyển đổi Ảnh
-          </button>
-          <button data-tool="imageEditor">
-            <i class="ph-fill ph-pencil-line"></i> Chỉnh sửa ảnh
-          </button>
-          <button data-tool="watermark"><i class="ph-fill ph-stamp"></i> Đóng dấu ảnh</button>
-          <button data-tool="base64File">
-            <i class="ph-fill ph-file-arrow-up"></i> File ↔ Base64
-          </button>
-          <button data-tool="fileUploader">
-            <i class="ph-fill ph-upload-simple"></i> Upload File
-          </button>
-          <button data-tool="videoThumbnail">
-            <i class="ph-fill ph-film-strip"></i> Video → Thumbnail
-          </button>
-
-          <button data-tool="fakeDataGenerator" class="group-start">
-            <i class="ph-fill ph-users-four"></i> Tạo dữ liệu giả
-          </button>
-          <button data-tool="loremIpsumGenerator">
-            <i class="ph-fill ph-text-align-left"></i> Lorem Ipsum Gen
-          </button>
-
-          <button data-tool="chartGenerator" class="group-start">
-            <i class="ph-fill ph-chart-bar"></i> Tạo biểu đồ từ CSV
-          </button>
-          <button data-tool="currencyConverter">
-            <i class="ph-fill ph-currency-dollar"></i> Đổi tiền
-          </button>
-          <button data-tool="facebookUtils">
-            <i class="ph-fill ph-facebook-logo"></i> Tiện ích FB
-          </button>
-        </aside>
-
-        <div class="backdrop" id="backdrop"></div>
-
-        <section class="panel" id="panel"></section>
-      </main>
-
-      <section class="coffee-section">
-        <div class="marquee-wrapper">
-          <div class="marquee-content">
-            <a href="https://paypal.me/trchicuong" target="_blank" rel="noopener noreferrer">
-              ☕ Buy for me a coffee: paypal.me/trchicuong
-            </a>
-            <a href="https://paypal.me/trchicuong" target="_blank" rel="noopener noreferrer">
-              ☕ Buy for me a coffee: paypal.me/trchicuong
-            </a>
-            <a href="https://paypal.me/trchicuong" target="_blank" rel="noopener noreferrer">
-              ☕ Buy for me a coffee: paypal.me/trchicuong
-            </a>
-            <a href="https://paypal.me/trchicuong" target="_blank" rel="noopener noreferrer">
-              ☕ Buy for me a coffee: paypal.me/trchicuong
-            </a>
-          </div>
+        <div class="sidebar-search">
+          <svg class="search-icon" width="14" height="14" viewBox="0 0 20 20" fill="none">
+            <circle cx="9" cy="9" r="7" stroke="currentColor" stroke-width="1.5" />
+            <path
+              d="M14.5 14.5L18 18"
+              stroke="currentColor"
+              stroke-width="1.5"
+              stroke-linecap="round"
+            />
+          </svg>
+          <input
+            style="padding: 8px 30px"
+            type="text"
+            id="toolSearch"
+            placeholder="Tìm tool..."
+            autocomplete="off"
+          />
         </div>
-      </section>
 
-      <footer>
-        <span>Created with ❤️ by trchicuong.</span>
-        <a href="https://github.com/trchicuong/multi-tool" target="_blank">Xem trên GitHub</a>
-      </footer>
+        <nav class="sidebar-nav" id="toolNav">
+          <p class="nav-group-label">Developer</p>
+          <a class="nav-item" href="#json-formatter" data-tool="json-formatter">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none">
+              <path
+                d="M8 3H6a2 2 0 00-2 2v14a2 2 0 002 2h12a2 2 0 002-2V8l-5-5H8z"
+                stroke="currentColor"
+                stroke-width="1.5"
+                stroke-linejoin="round"
+              />
+              <path d="M14 3v5h5" stroke="currentColor" stroke-width="1.5" />
+              <path
+                d="M9 13h1.5a1 1 0 110 2H9v2m6-4h-1.5a1 1 0 000 2H15"
+                stroke="currentColor"
+                stroke-width="1.5"
+                stroke-linecap="round"
+              />
+            </svg>
+            JSON Formatter
+          </a>
+          <a class="nav-item" href="#json-viewer" data-tool="json-viewer">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none">
+              <path
+                d="M3 9l4 4-4 4m8 0h6"
+                stroke="currentColor"
+                stroke-width="1.5"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              />
+            </svg>
+            JSON Tree Viewer
+          </a>
+          <a class="nav-item" href="#diff-checker" data-tool="diff-checker">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none">
+              <path
+                d="M9 3H5a2 2 0 00-2 2v14a2 2 0 002 2h4m6-18h4a2 2 0 012 2v14a2 2 0 01-2 2h-4"
+                stroke="currentColor"
+                stroke-width="1.5"
+              />
+              <path
+                d="M12 8v8m-3-4h6"
+                stroke="currentColor"
+                stroke-width="1.5"
+                stroke-linecap="round"
+              />
+            </svg>
+            Diff Checker
+          </a>
+          <a class="nav-item" href="#minify" data-tool="minify">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none">
+              <path
+                d="M4 6h16M4 10h10M4 14h6M4 18h8"
+                stroke="currentColor"
+                stroke-width="1.5"
+                stroke-linecap="round"
+              />
+            </svg>
+            Minify / Unminify
+          </a>
+          <a class="nav-item" href="#regex-tester" data-tool="regex-tester">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none">
+              <circle cx="12" cy="12" r="2" fill="currentColor" />
+              <path
+                d="M12 3v3m0 12v3M3 12h3m12 0h3m-2.6-6.4-2.1 2.1M8.7 15.3l-2.1 2.1m0-13.7 2.1 2.1M15.3 15.3l2.1 2.1"
+                stroke="currentColor"
+                stroke-width="1.5"
+                stroke-linecap="round"
+              />
+            </svg>
+            Regex Tester
+          </a>
+          <a class="nav-item" href="#rest-client" data-tool="rest-client">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none">
+              <path
+                d="M4 7h16M4 12h10M4 17h6"
+                stroke="currentColor"
+                stroke-width="1.5"
+                stroke-linecap="round"
+              />
+              <circle cx="19" cy="17" r="3" stroke="currentColor" stroke-width="1.5" />
+            </svg>
+            REST Client
+          </a>
+          <a class="nav-item" href="#cron-helper" data-tool="cron-helper">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none">
+              <circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="1.5" />
+              <path
+                d="M12 7v5l3 3"
+                stroke="currentColor"
+                stroke-width="1.5"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              />
+            </svg>
+            Cron Job Helper
+          </a>
+          <a class="nav-item" href="#chart-generator" data-tool="chart-generator">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none">
+              <path
+                d="M3 3v18h18"
+                stroke="currentColor"
+                stroke-width="1.5"
+                stroke-linecap="round"
+              />
+              <path
+                d="M7 16l4-4 4 4 4-8"
+                stroke="currentColor"
+                stroke-width="1.5"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              />
+            </svg>
+            Chart Generator
+          </a>
+
+          <p class="nav-group-label">Encoding & Parsing</p>
+          <a class="nav-item" href="#base64-text" data-tool="base64-text">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none">
+              <rect
+                x="3"
+                y="5"
+                width="18"
+                height="14"
+                rx="2"
+                stroke="currentColor"
+                stroke-width="1.5"
+              />
+              <path
+                d="M7 9h5m-5 4h8m-8 4h4"
+                stroke="currentColor"
+                stroke-width="1.5"
+                stroke-linecap="round"
+              />
+            </svg>
+            Text ↔ Base64
+          </a>
+          <a class="nav-item" href="#base64-file" data-tool="base64-file">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none">
+              <path
+                d="M14 3v5h5M14 3H6a2 2 0 00-2 2v14a2 2 0 002 2h12a2 2 0 002-2V8l-5-5z"
+                stroke="currentColor"
+                stroke-width="1.5"
+                stroke-linejoin="round"
+              />
+              <path
+                d="M12 12v6m-3-3l3-3 3 3"
+                stroke="currentColor"
+                stroke-width="1.5"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              />
+            </svg>
+            File ↔ Base64
+          </a>
+          <a class="nav-item" href="#csv-json" data-tool="csv-json">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none">
+              <path d="M3 3h18v18H3z" stroke="currentColor" stroke-width="1.5" rx="1" />
+              <path d="M3 9h18M3 15h18M9 3v18" stroke="currentColor" stroke-width="1.5" />
+            </svg>
+            CSV ↔ JSON
+          </a>
+          <a class="nav-item" href="#html-to-json" data-tool="html-to-json">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none">
+              <path
+                d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"
+                stroke="currentColor"
+                stroke-width="1.5"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              />
+            </svg>
+            HTML/XML → JSON
+          </a>
+          <a class="nav-item" href="#url-parser" data-tool="url-parser">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none">
+              <path
+                d="M10 13a5 5 0 007.54.54l3-3a5 5 0 00-7.07-7.07l-1.72 1.71"
+                stroke="currentColor"
+                stroke-width="1.5"
+                stroke-linecap="round"
+              />
+              <path
+                d="M14 11a5 5 0 00-7.54-.54l-3 3a5 5 0 007.07 7.07l1.71-1.71"
+                stroke="currentColor"
+                stroke-width="1.5"
+                stroke-linecap="round"
+              />
+            </svg>
+            URL Parser
+          </a>
+          <a class="nav-item" href="#jwt-decoder" data-tool="jwt-decoder">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none">
+              <path
+                d="M21 2l-2 2m-7.61 7.61a5.5 5.5 0 11-7.778 7.778 5.5 5.5 0 017.777-7.777zm0 0L15.5 7.5m0 0l3 3L22 7l-3-3m-3.5 3.5L19 4"
+                stroke="currentColor"
+                stroke-width="1.5"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              />
+            </svg>
+            JWT Decoder
+          </a>
+          <a class="nav-item" href="#number-base" data-tool="number-base">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none">
+              <path
+                d="M7 8h10M7 12h6M7 16h4"
+                stroke="currentColor"
+                stroke-width="1.5"
+                stroke-linecap="round"
+              />
+              <rect
+                x="3"
+                y="4"
+                width="18"
+                height="16"
+                rx="2"
+                stroke="currentColor"
+                stroke-width="1.5"
+              />
+            </svg>
+            Number Base Conv.
+          </a>
+
+          <p class="nav-group-label">Generators</p>
+          <a class="nav-item" href="#hash-generator" data-tool="hash-generator">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none">
+              <path
+                d="M4 9h16M4 15h16M10 3L8 21M16 3l-2 18"
+                stroke="currentColor"
+                stroke-width="1.5"
+                stroke-linecap="round"
+              />
+            </svg>
+            Hash Generator
+          </a>
+          <a class="nav-item" href="#uuid-generator" data-tool="uuid-generator">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none">
+              <rect
+                x="2"
+                y="7"
+                width="20"
+                height="10"
+                rx="2"
+                stroke="currentColor"
+                stroke-width="1.5"
+              />
+              <path
+                d="M6 12h.01M10 12h.01M14 12h.01M18 12h.01"
+                stroke="currentColor"
+                stroke-width="1.5"
+                stroke-linecap="round"
+              />
+            </svg>
+            UUID Generator
+          </a>
+          <a class="nav-item" href="#password-generator" data-tool="password-generator">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none">
+              <rect
+                x="3"
+                y="11"
+                width="18"
+                height="11"
+                rx="2"
+                stroke="currentColor"
+                stroke-width="1.5"
+              />
+              <path
+                d="M7 11V7a5 5 0 0110 0v4"
+                stroke="currentColor"
+                stroke-width="1.5"
+                stroke-linecap="round"
+              />
+            </svg>
+            Password Generator
+          </a>
+          <a class="nav-item" href="#unix-timestamp" data-tool="unix-timestamp">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none">
+              <circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="1.5" />
+              <path
+                d="M12 7v5l3 3"
+                stroke="currentColor"
+                stroke-width="1.5"
+                stroke-linecap="round"
+              />
+            </svg>
+            Unix Timestamp
+          </a>
+          <a class="nav-item" href="#fake-data" data-tool="fake-data">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none">
+              <circle cx="9" cy="7" r="4" stroke="currentColor" stroke-width="1.5" />
+              <path
+                d="M3 21v-2a4 4 0 014-4h4a4 4 0 014 4v2"
+                stroke="currentColor"
+                stroke-width="1.5"
+                stroke-linecap="round"
+              />
+              <path
+                d="M16 3.13a4 4 0 010 7.75M21 21v-2a4 4 0 00-3-3.85"
+                stroke="currentColor"
+                stroke-width="1.5"
+                stroke-linecap="round"
+              />
+            </svg>
+            Fake Data Generator
+          </a>
+          <a class="nav-item" href="#lorem-ipsum" data-tool="lorem-ipsum">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none">
+              <path
+                d="M4 6h16M4 10h12M4 14h14M4 18h8"
+                stroke="currentColor"
+                stroke-width="1.5"
+                stroke-linecap="round"
+              />
+            </svg>
+            Lorem Ipsum
+          </a>
+          <a class="nav-item" href="#qr-generator" data-tool="qr-generator">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none">
+              <rect
+                x="3"
+                y="3"
+                width="7"
+                height="7"
+                rx="1"
+                stroke="currentColor"
+                stroke-width="1.5"
+              />
+              <rect
+                x="14"
+                y="3"
+                width="7"
+                height="7"
+                rx="1"
+                stroke="currentColor"
+                stroke-width="1.5"
+              />
+              <rect
+                x="3"
+                y="14"
+                width="7"
+                height="7"
+                rx="1"
+                stroke="currentColor"
+                stroke-width="1.5"
+              />
+              <path
+                d="M14 14h3v3h-3zm4 0h3m0 3v4m-7 0h3m4-4h-4v4"
+                stroke="currentColor"
+                stroke-width="1.5"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              />
+            </svg>
+            QR Generator
+          </a>
+
+          <p class="nav-group-label">CSS & Design</p>
+          <a class="nav-item" href="#color-converter" data-tool="color-converter">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none">
+              <circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="1.5" />
+              <path
+                d="M12 3c0 9 9 9 0 9S3 12 3 12"
+                stroke="currentColor"
+                stroke-width="1.5"
+                stroke-linecap="round"
+              />
+            </svg>
+            Color Converter
+          </a>
+          <a class="nav-item" href="#css-unit" data-tool="css-unit">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none">
+              <path
+                d="M4 20h16M4 4v16M8 16l4-8 4 8"
+                stroke="currentColor"
+                stroke-width="1.5"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              />
+            </svg>
+            CSS Unit Converter
+          </a>
+          <a class="nav-item" href="#box-shadow" data-tool="box-shadow">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none">
+              <rect
+                x="3"
+                y="3"
+                width="14"
+                height="14"
+                rx="2"
+                stroke="currentColor"
+                stroke-width="1.5"
+              />
+              <path
+                d="M7 21h14M21 7v14"
+                stroke="currentColor"
+                stroke-width="1.5"
+                stroke-linecap="round"
+                opacity=".4"
+              />
+            </svg>
+            Box-Shadow Gen
+          </a>
+          <a class="nav-item" href="#gradient" data-tool="gradient">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none">
+              <defs>
+                <linearGradient id="g" x1="0%" y1="0%" x2="100%">
+                  <stop offset="0%" stop-color="currentColor" stop-opacity="1" />
+                  <stop offset="100%" stop-color="currentColor" stop-opacity=".15" />
+                </linearGradient>
+              </defs>
+              <rect
+                x="3"
+                y="3"
+                width="18"
+                height="18"
+                rx="2"
+                fill="url(#g)"
+                stroke="currentColor"
+                stroke-width="1.5"
+              />
+            </svg>
+            CSS Gradient
+          </a>
+
+          <p class="nav-group-label">Media</p>
+          <a class="nav-item" href="#image-converter" data-tool="image-converter">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none">
+              <rect
+                x="3"
+                y="3"
+                width="18"
+                height="18"
+                rx="2"
+                stroke="currentColor"
+                stroke-width="1.5"
+              />
+              <circle cx="8.5" cy="8.5" r="1.5" stroke="currentColor" stroke-width="1.5" />
+              <path
+                d="M21 15l-5-5L5 21"
+                stroke="currentColor"
+                stroke-width="1.5"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              />
+            </svg>
+            Image Converter
+          </a>
+          <a class="nav-item" href="#image-editor" data-tool="image-editor">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none">
+              <path
+                d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"
+                stroke="currentColor"
+                stroke-width="1.5"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              />
+              <path
+                d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"
+                stroke="currentColor"
+                stroke-width="1.5"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              />
+            </svg>
+            Image Editor
+          </a>
+          <a class="nav-item" href="#watermark" data-tool="watermark">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none">
+              <path
+                d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"
+                stroke="currentColor"
+                stroke-width="1.5"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              />
+            </svg>
+            Watermark
+          </a>
+          <a class="nav-item" href="#video-thumbnail" data-tool="video-thumbnail">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none">
+              <rect
+                x="2"
+                y="4"
+                width="20"
+                height="16"
+                rx="2"
+                stroke="currentColor"
+                stroke-width="1.5"
+              />
+              <path
+                d="M10 9l5 3-5 3V9z"
+                stroke="currentColor"
+                stroke-width="1.5"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              />
+            </svg>
+            Video Thumbnail
+          </a>
+
+          <p class="nav-group-label">Tools</p>
+          <a class="nav-item" href="#calculator" data-tool="calculator">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none">
+              <rect
+                x="4"
+                y="2"
+                width="16"
+                height="20"
+                rx="2"
+                stroke="currentColor"
+                stroke-width="1.5"
+              />
+              <path
+                d="M8 6h8M8 10h2m4 0h2M8 14h2m4 0h2M8 18h2m4 0h2"
+                stroke="currentColor"
+                stroke-width="1.5"
+                stroke-linecap="round"
+              />
+            </svg>
+            Calculator
+          </a>
+          <a class="nav-item" href="#typing-test" data-tool="typing-test">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none">
+              <rect
+                x="2"
+                y="6"
+                width="20"
+                height="12"
+                rx="2"
+                stroke="currentColor"
+                stroke-width="1.5"
+              />
+              <path
+                d="M6 10h2m4 0h2m4 0h2M8 14h8"
+                stroke="currentColor"
+                stroke-width="1.5"
+                stroke-linecap="round"
+              />
+            </svg>
+            Typing Speed Test
+          </a>
+          <a class="nav-item" href="#markdown" data-tool="markdown">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none">
+              <path
+                d="M4 6h16M4 10h10M4 14h12M4 18h6"
+                stroke="currentColor"
+                stroke-width="1.5"
+                stroke-linecap="round"
+              />
+            </svg>
+            Markdown Preview
+          </a>
+
+          <p class="nav-group-label">Utilities</p>
+          <a class="nav-item" href="#link-shortener" data-tool="link-shortener">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none">
+              <path
+                d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"
+                stroke="currentColor"
+                stroke-width="1.5"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              />
+              <path
+                d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"
+                stroke="currentColor"
+                stroke-width="1.5"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              />
+            </svg>
+            Link Shortener
+          </a>
+          <a class="nav-item" href="#file-uploader" data-tool="file-uploader">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none">
+              <path
+                d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"
+                stroke="currentColor"
+                stroke-width="1.5"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              />
+              <polyline
+                points="17 8 12 3 7 8"
+                stroke="currentColor"
+                stroke-width="1.5"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              />
+              <line
+                x1="12"
+                y1="3"
+                x2="12"
+                y2="15"
+                stroke="currentColor"
+                stroke-width="1.5"
+                stroke-linecap="round"
+              />
+            </svg>
+            File Inspector
+          </a>
+          <a class="nav-item" href="#currency-converter" data-tool="currency-converter">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none">
+              <circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="1.5" />
+              <path
+                d="M12 6v2m0 8v2M9 12h6m-3-3v6"
+                stroke="currentColor"
+                stroke-width="1.5"
+                stroke-linecap="round"
+              />
+            </svg>
+            Currency Converter
+          </a>
+
+          <p class="nav-group-label">Network</p>
+          <a class="nav-item" href="#speed-test" data-tool="speed-test">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none">
+              <path
+                d="M12 2a10 10 0 1 0 10 10"
+                stroke="currentColor"
+                stroke-width="1.5"
+                stroke-linecap="round"
+              />
+              <path
+                d="M12 12L17 7"
+                stroke="currentColor"
+                stroke-width="1.5"
+                stroke-linecap="round"
+              />
+              <circle cx="12" cy="12" r="2" fill="currentColor" />
+              <path
+                d="M2 12h2M20 12h2M12 2v2M12 20v2"
+                stroke="currentColor"
+                stroke-width="1.5"
+                stroke-linecap="round"
+              />
+            </svg>
+            Speed Test
+          </a>
+          <a class="nav-item" href="#ip-checker" data-tool="ip-checker">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none">
+              <circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="1.5" />
+              <path
+                d="M2 12h20M12 2a15.3 15.3 0 0 1 0 20M12 2a15.3 15.3 0 0 0 0 20"
+                stroke="currentColor"
+                stroke-width="1.5"
+                stroke-linecap="round"
+              />
+            </svg>
+            IP Address Checker
+          </a>
+        </nav>
+
+        <div class="sidebar-footer">
+          <a
+            href="https://github.com/trchicuong/multi-tool"
+            target="_blank"
+            rel="noopener noreferrer"
+            class="footer-link"
+          >
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
+              <path
+                d="M12 2C6.477 2 2 6.484 2 12.017c0 4.425 2.865 8.18 6.839 9.504.5.092.682-.217.682-.483 0-.237-.008-.868-.013-1.703-2.782.605-3.369-1.343-3.369-1.343-.454-1.158-1.11-1.466-1.11-1.466-.908-.62.069-.608.069-.608 1.003.07 1.531 1.032 1.531 1.032.892 1.53 2.341 1.088 2.91.832.092-.647.35-1.088.636-1.338-2.22-.253-4.555-1.113-4.555-4.951 0-1.093.39-1.988 1.029-2.688-.103-.253-.446-1.272.098-2.65 0 0 .84-.27 2.75 1.026A9.564 9.564 0 0112 6.844c.85.004 1.705.115 2.504.337 1.909-1.296 2.747-1.027 2.747-1.027.546 1.379.202 2.398.1 2.651.64.7 1.028 1.595 1.028 2.688 0 3.848-2.339 4.695-4.566 4.943.359.309.678.92.678 1.855 0 1.338-.012 2.419-.012 2.747 0 .268.18.58.688.482A10.019 10.019 0 0022 12.017C22 6.484 17.522 2 12 2z"
+              />
+            </svg>
+            GitHub
+          </a>
+          <a
+            href="https://sponsor.trchicuong.id.vn/"
+            target="_blank"
+            rel="noopener noreferrer"
+            class="footer-link"
+          >
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none">
+              <path
+                d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"
+                stroke="currentColor"
+                stroke-width="1.5"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              />
+            </svg>
+            Buy me a coffee
+          </a>
+        </div>
+      </aside>
+
+      <!-- Main content -->
+      <div class="main">
+        <header class="topbar">
+          <button class="icon-btn hamburger" id="hamburger" aria-label="Mở menu">
+            <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
+              <path
+                d="M2 4h14M2 9h14M2 14h14"
+                stroke="currentColor"
+                stroke-width="1.5"
+                stroke-linecap="round"
+              />
+            </svg>
+          </button>
+          <span class="topbar-title" id="topbarTitle">Multi Tool</span>
+          <div class="topbar-actions">
+            <button
+              class="icon-btn"
+              id="themeToggle"
+              aria-label="Chuyển theme"
+              title="Chuyển sáng/tối"
+            >
+              <svg class="icon-light" width="16" height="16" viewBox="0 0 24 24" fill="none">
+                <circle cx="12" cy="12" r="5" stroke="currentColor" stroke-width="1.5" />
+                <path
+                  d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"
+                  stroke="currentColor"
+                  stroke-width="1.5"
+                  stroke-linecap="round"
+                />
+              </svg>
+              <svg class="icon-dark" width="16" height="16" viewBox="0 0 24 24" fill="none">
+                <path
+                  d="M21 12.79A9 9 0 1111.21 3 7 7 0 0021 12.79z"
+                  stroke="currentColor"
+                  stroke-width="1.5"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                />
+              </svg>
+            </button>
+          </div>
+        </header>
+
+        <main class="content" id="panel">
+          <!-- Tool content loads here -->
+          <div class="welcome-screen" id="welcomeScreen">
+            <div class="welcome-inner">
+              <h2>Multi Tool</h2>
+              <p>Chọn một công cụ từ thanh bên để bắt đầu.</p>
+              <div class="welcome-grid" id="welcomeGrid"></div>
+            </div>
+          </div>
+        </main>
+      </div>
     </div>
 
-    <script
-      src="https://cdn.jsdelivr.net/npm/easyqrcodejs@4.6.0/dist/easy.qrcode.min.js"
-      defer
-    ></script>
-    <script
-      src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.2.0/crypto-js.min.js"
-      defer
-    ></script>
-    <script
-      src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"
-      defer
-    ></script>
-    <script
-      src="https://cdnjs.cloudflare.com/ajax/libs/js-beautify/1.15.1/beautify.min.js"
-      defer
-    ></script>
-    <script
-      src="https://cdnjs.cloudflare.com/ajax/libs/js-beautify/1.15.1/beautify-css.min.js"
-      defer
-    ></script>
-    <script
-      src="https://cdnjs.cloudflare.com/ajax/libs/js-beautify/1.15.1/beautify-html.min.js"
-      defer
-    ></script>
-    <script src="https://cdn.jsdelivr.net/npm/terser/dist/bundle.min.js" defer></script>
-    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js" defer></script>
-    <script src="https://cdn.jsdelivr.net/npm/dompurify/dist/purify.min.js" defer></script>
-
-    <script src="js/app.js" type="module"></script>
-
-    <script>
-      setTimeout(() => {
-        console.clear();
-
-        const title =
-          'font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; font-size: 14px; font-weight: 700; color: #ffffff; margin-bottom: 8px;';
-
-        // Style tối giản: Đường kẻ dọc bên trái, padding thoáng
-        const body = `
-        font-family: Consolas, Monaco, "Andale Mono", monospace;
-        font-size: 13px;
-        line-height: 1.6;
-        color: #ffffff;
-        padding-left: 15px;
-        border-left: 3px solid #ffffff; 
-        margin-top: 5px;
-    `;
-
-        console.log('%cLời nhắn nhủ:', title);
-        console.log(
-          `%cChào bạn đang bật DevTools.
-
-Tôi biết bạn đang soi Network tab để tìm API Key.
-Nói ngắn gọn đỡ mất thời gian của nhau:
-
-1. Đây là Key Free Tier. Web này tôi chạy Serverless, Key buộc phải để ở Client. Không có tiền trong đó đâu, giới hạn request cũng thấp, bạn lấy về cũng chẳng bào được gì ra hồn.
-2. Web này dựng lên phi lợi nhuận để phục vụ cộng đồng và sử dụng cá nhân lúc cần thiết.
-
-Nếu có ý định phá hoại thì mời lượn, ở đây không có gì để khai thác đâu.`,
-          body,
-        );
-      }, 1000);
-    </script>
+    <script type="module" src="/js/app.js"></script>
   </body>
 </html>
