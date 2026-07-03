@@ -48,6 +48,7 @@ const TOOLS = {
 
   // Tools
   calculator: { file: 'tools/calculator.js', label: 'Calculator' },
+  'countdown-timer': { file: 'tools/countdownTimer.js', label: 'Countdown Timer' },
   'typing-test': { file: 'tools/typingTest.js', label: 'Typing Speed Test' },
   markdown: { file: 'tools/markdown.js', label: 'Markdown Preview' },
 

@@ -9,31 +9,41 @@ function escHtml(s) {
 }
 
 function parseInline(text) {
-  return (
-    text
-      // code (inline) — must come before bold/italic
-      .replace(/`([^`]+)`/g, (_, c) => `<code>${escHtml(c)}</code>`)
-      // bold
-      .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
-      .replace(/__(.+?)__/g, '<strong>$1</strong>')
-      // italic
-      .replace(/\*(.+?)\*/g, '<em>$1</em>')
-      .replace(/_(.+?)_/g, '<em>$1</em>')
-      // strikethrough
-      .replace(/~~(.+?)~~/g, '<del>$1</del>')
-      // image before link (order matters)
-      .replace(/!\[([^\]]*)\]\(([^)]+)\)/g, '<img src="$2" alt="$1" style="max-width:100%;" />')
-      // link
-      .replace(
-        /\[([^\]]+)\]\(([^)]+)\)/g,
-        '<a href="$2" target="_blank" rel="noopener noreferrer">$1</a>',
-      )
-      // auto-link
-      .replace(
-        /(https?:\/\/[^\s<>"]+)/g,
-        '<a href="$1" target="_blank" rel="noopener noreferrer">$1</a>',
-      )
-  );
+  const tokens = [];
+  const store = (html) => {
+    const token = `\u0000${tokens.length}\u0000`;
+    tokens.push(html);
+    return token;
+  };
+
+  let out = text
+    // code (inline) — must come before bold/italic
+    .replace(/`([^`]+)`/g, (_, c) => store(`<code>${escHtml(c)}</code>`))
+    // image before link (order matters)
+    .replace(/!\[([^\]]*)\]\(([^)]+)\)/g, (_, alt, src) =>
+      store(`<img src="${src}" alt="${alt}" style="max-width:100%;" />`),
+    )
+    // link
+    .replace(/\[([^\]]+)\]\(([^)]+)\)/g, (_, label, href) =>
+      store(`<a href="${href}" target="_blank" rel="noopener noreferrer">${label}</a>`),
+    );
+
+  out = out
+    // bold
+    .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
+    .replace(/__(.+?)__/g, '<strong>$1</strong>')
+    // italic
+    .replace(/\*(.+?)\*/g, '<em>$1</em>')
+    .replace(/_(.+?)_/g, '<em>$1</em>')
+    // strikethrough
+    .replace(/~~(.+?)~~/g, '<del>$1</del>')
+    // auto-link
+    .replace(
+      /(https?:\/\/[^\s<>"]+)/g,
+      '<a href="$1" target="_blank" rel="noopener noreferrer">$1</a>',
+    );
+
+  return out.replace(/\u0000(\d+)\u0000/g, (_, index) => tokens[Number(index)] ?? '');
 }
 
 function parseMarkdown(md) {
