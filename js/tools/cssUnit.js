@@ -1,5 +1,5 @@
 /**
- * CSS Unit Converter — px, rem, em, vw, vh, pt, cm, mm
+ * CSS Unit Converter — px, rem, em, vw, vh, pt, cm, mm with live base recalculation
  */
 
 const UNITS = ['px', 'rem', 'em', 'vw', 'vh', 'pt', 'cm', 'mm'];
@@ -8,44 +8,42 @@ export function getHtml() {
   return `
     <div class="tool-header">
       <h1>CSS Unit Converter</h1>
-      <p>Chuyển đổi giữa các đơn vị CSS: px, rem, em, vw, vh, pt, cm, mm.</p>
+      <p>Chuyển đổi tức thì giữa các đơn vị CSS (px, rem, em, vw, vh, pt, cm, mm) theo kích thước gốc tùy chỉnh.</p>
     </div>
 
     <div class="card">
-      <div class="row" style="flex-wrap:wrap; gap:12px; align-items:flex-end;">
-        <div style="flex:0 0 120px;">
-          <label class="field-label">Base Font Size</label>
-          <div class="d-flex align-center gap-1">
-            <input type="number" id="cuBase" value="16" min="1" max="100" style="width:70px;" />
-            <span class="text-muted text-sm">px</span>
-          </div>
+      <div class="card-header">
+        <span class="field-label">Tham số chuẩn (Base &amp; Viewport)</span>
+        <button type="button" class="btn btn-ghost btn-sm" id="cuResetCfg">Mặc định (16px · 1440×900)</button>
+      </div>
+      <div style="display:grid; grid-template-columns:repeat(3, minmax(0, 1fr)); gap:12px;">
+        <div>
+          <label class="field-label" for="cuBase">Base Font Size (px)</label>
+          <input type="number" id="cuBase" value="16" min="1" max="100" />
         </div>
-        <div style="flex:0 0 120px;">
-          <label class="field-label">Viewport Width</label>
-          <div class="d-flex align-center gap-1">
-            <input type="number" id="cuVw" value="1440" min="1" style="width:80px;" />
-            <span class="text-muted text-sm">px</span>
-          </div>
+        <div>
+          <label class="field-label" for="cuVw">Viewport Width (px)</label>
+          <input type="number" id="cuVw" value="1440" min="1" />
         </div>
-        <div style="flex:0 0 120px;">
-          <label class="field-label">Viewport Height</label>
-          <div class="d-flex align-center gap-1">
-            <input type="number" id="cuVh" value="900" min="1" style="width:80px;" />
-            <span class="text-muted text-sm">px</span>
-          </div>
+        <div>
+          <label class="field-label" for="cuVh">Viewport Height (px)</label>
+          <input type="number" id="cuVh" value="900" min="1" />
         </div>
       </div>
     </div>
 
-    <div class="card mt-2">
-      <div class="field-label">Nhập giá trị vào bất kỳ ô nào</div>
-      <div id="cuGrid" style="display:grid; grid-template-columns:repeat(auto-fill, minmax(180px,1fr)); gap:10px; margin-top:12px;"></div>
+    <div class="card">
+      <div class="card-header">
+        <span class="field-label">Nhập giá trị vào bất kỳ đơn vị nào</span>
+      </div>
+      <div id="cuGrid" style="display:grid; grid-template-columns:repeat(auto-fit, minmax(200px,1fr)); gap:12px;"></div>
     </div>
 
-    <!-- Reference table -->
-    <div class="card mt-2">
-      <div class="field-label">Bảng quy đổi nhanh (base 16px, viewport 1440×900)</div>
-      <div class="table-wrap mt-1">
+    <div class="card">
+      <div class="card-header">
+        <span class="field-label" id="cuTableLabel">Bảng quy đổi nhanh</span>
+      </div>
+      <div class="table-wrap">
         <table id="cuTable">
           <thead>
             <tr>
@@ -65,13 +63,17 @@ export function init() {
   const vhInput = document.getElementById('cuVh');
   const grid = document.getElementById('cuGrid');
   const tableBody = document.getElementById('cuTableBody');
+  const tableLabel = document.getElementById('cuTableLabel');
+  const resetCfgBtn = document.getElementById('cuResetCfg');
 
-  // Build inputs
   grid.innerHTML = UNITS.map(
     (u) => `
     <div>
-      <label class="field-label">${u}</label>
-      <input type="number" id="cu_${u}" class="mono" placeholder="0" step="any" />
+      <label class="field-label" for="cu_${u}">${u}</label>
+      <div class="d-flex align-center gap-1">
+        <input type="number" id="cu_${u}" class="mono flex-1" placeholder="0" step="any" />
+        <button type="button" class="copy-btn cu-copy" data-unit="${u}" style="min-height:38px;">Copy</button>
+      </div>
     </div>
   `,
   ).join('');
@@ -84,7 +86,6 @@ export function init() {
       case 'px':
         return val;
       case 'rem':
-        return val * base;
       case 'em':
         return val * base;
       case 'vw':
@@ -110,7 +111,6 @@ export function init() {
       case 'px':
         return px;
       case 'rem':
-        return px / base;
       case 'em':
         return px / base;
       case 'vw':
@@ -129,52 +129,66 @@ export function init() {
   };
 
   const fmt = (n) => {
-    if (Math.abs(n) < 0.001) return '0';
-    const s = parseFloat(n.toFixed(6)).toString();
-    return s;
+    if (Math.abs(n) < 0.0001) return '0';
+    return parseFloat(n.toFixed(4)).toString();
   };
 
   let busy = false;
+  let lastSourceUnit = 'px';
+
   const updateFrom = (sourceUnit) => {
     if (busy) return;
+    lastSourceUnit = sourceUnit;
     const el = document.getElementById(`cu_${sourceUnit}`);
     const val = parseFloat(el.value);
-    if (isNaN(val)) return;
+    if (Number.isNaN(val)) return;
     busy = true;
     const px = toPx(val, sourceUnit);
     UNITS.forEach((u) => {
       if (u === sourceUnit) return;
-      const target = document.getElementById(`cu_${u}`);
-      target.value = fmt(fromPx(px, u));
+      document.getElementById(`cu_${u}`).value = fmt(fromPx(px, u));
     });
     busy = false;
   };
 
   UNITS.forEach((u) => {
-    const el = document.getElementById(`cu_${u}`);
-    el.addEventListener('input', () => updateFrom(u));
+    document.getElementById(`cu_${u}`).addEventListener('input', () => updateFrom(u));
   });
 
-  const updateTable = () => {
-    const rows = [1, 2, 4, 8, 10, 12, 14, 16, 18, 20, 24, 32, 40, 48, 64, 80, 96];
-    tableBody.innerHTML = rows
-      .map(
-        (px) => `
-      <tr>${UNITS.map((u) => `<td class="mono">${fmt(fromPx(px, u))}</td>`).join('')}</tr>
-    `,
-      )
-      .join('');
-  };
-
-  [baseInput, vwInput, vhInput].forEach((el) => {
-    el.addEventListener('input', () => {
-      // Re-trigger last active input
-      updateTable();
+  grid.querySelectorAll('.cu-copy').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      const u = btn.dataset.unit;
+      const val = document.getElementById(`cu_${u}`)?.value;
+      if (val !== '') window.copyToClipboard(`${val}${u}`, btn);
     });
   });
 
-  // Default: set px = 16
-  document.getElementById('cu_px').value = 16;
+  const updateTable = () => {
+    const base = parseFloat(baseInput.value) || 16;
+    const vw = parseFloat(vwInput.value) || 1440;
+    const vh = parseFloat(vhInput.value) || 900;
+    tableLabel.textContent = `Bảng quy đổi nhanh (base ${base}px, viewport ${vw}×${vh})`;
+    const rows = [1, 2, 4, 8, 12, 14, 16, 18, 20, 24, 32, 40, 48, 64, 80, 96];
+    tableBody.innerHTML = rows
+      .map((px) => `<tr>${UNITS.map((u) => `<td class="mono">${fmt(fromPx(px, u))}</td>`).join('')}</tr>`)
+      .join('');
+  };
+
+  const onConfigChange = () => {
+    updateFrom(lastSourceUnit);
+    updateTable();
+  };
+
+  [baseInput, vwInput, vhInput].forEach((el) => el.addEventListener('input', onConfigChange));
+
+  resetCfgBtn.addEventListener('click', () => {
+    baseInput.value = '16';
+    vwInput.value = '1440';
+    vhInput.value = '900';
+    onConfigChange();
+  });
+
+  document.getElementById('cu_px').value = '16';
   updateFrom('px');
   updateTable();
 }

@@ -1,12 +1,12 @@
 /**
- * Video Thumbnail — extract frame from video at given timestamp
+ * Video Thumbnail Extractor — visible video scrubbing + fine frame stepping + PNG/JPEG export
  */
 
 export function getHtml() {
   return `
     <div class="tool-header">
       <h1>Video Thumbnail Extractor</h1>
-      <p>Trích xuất frame ảnh từ video tại bất kỳ thời điểm nào. Xuất dạng PNG hoặc JPEG.</p>
+      <p>Xem trước trực tiếp video, tua chính xác từng 0.1 giây và trích xuất frame ảnh chất lượng gốc.</p>
     </div>
 
     <div class="card">
@@ -17,42 +17,65 @@ export function getHtml() {
       </div>
     </div>
 
-    <div id="vtMain" style="display:none; margin-top:8px;">
-      <!-- Video player (hidden, used for seeking) -->
-      <video id="vtVideo" style="display:none;" preload="auto"></video>
+    <div id="vtMain" style="display:none;">
+      <div class="split-editor mb-2" style="align-items:stretch;">
+        <div class="card" style="margin-bottom:0; display:flex; flex-direction:column;">
+          <div class="card-header">
+            <span class="field-label">Video Preview</span>
+            <span class="text-sm text-muted mono" id="vtVideoDims"></span>
+          </div>
+          <video id="vtVideo" controls preload="metadata" style="width:100%; max-height:320px; border-radius:var(--radius); background:#000;"></video>
+        </div>
 
-      <div class="card">
-        <div class="field-label">Chọn thời điểm</div>
-        <div class="row mt-1" style="flex-wrap:wrap; gap:10px; align-items:center;">
-          <div style="flex:0 0 auto;">
-            <label class="field-label">Giờ : Phút : Giây</label>
-            <div class="d-flex align-center gap-1">
-              <input type="number" id="vtH" value="0" min="0" style="width:55px;" /> :
-              <input type="number" id="vtM" value="0" min="0" max="59" style="width:55px;" /> :
-              <input type="number" id="vtS" value="0" min="0" max="59" step="0.1" style="width:70px;" />
+        <div class="card" style="margin-bottom:0; display:flex; flex-direction:column; justify-content:space-between;">
+          <div>
+            <div class="card-header">
+              <span class="field-label">Điều chỉnh thời điểm</span>
+              <span class="text-sm text-muted mono" id="vtTimeReadout">0:00.0 / 0:00.0</span>
+            </div>
+
+            <div class="field">
+              <label class="field-label" for="vtSeek">Thanh tua nhanh</label>
+              <input type="range" id="vtSeek" min="0" max="100" value="0" step="0.05" />
+            </div>
+
+            <div class="field">
+              <span class="field-label">Giờ : Phút : Giây</span>
+              <div class="d-flex align-center gap-1">
+                <input type="number" id="vtH" value="0" min="0" style="width:70px;" aria-label="Giờ" />
+                <span>:</span>
+                <input type="number" id="vtM" value="0" min="0" max="59" style="width:70px;" aria-label="Phút" />
+                <span>:</span>
+                <input type="number" id="vtS" value="0" min="0" max="59.9" step="0.1" style="width:84px;" aria-label="Giây" />
+              </div>
+            </div>
+
+            <div class="field">
+              <span class="field-label">Bước nhảy chính xác</span>
+              <div class="preset-strip">
+                <button type="button" class="btn btn-secondary btn-sm vt-step" data-step="-1">−1s</button>
+                <button type="button" class="btn btn-secondary btn-sm vt-step" data-step="-0.1">−0.1s</button>
+                <button type="button" class="btn btn-secondary btn-sm vt-step" data-step="0.1">+0.1s</button>
+                <button type="button" class="btn btn-secondary btn-sm vt-step" data-step="1">+1s</button>
+              </div>
             </div>
           </div>
-          <div class="flex-1" style="min-width:180px;">
-            <label class="field-label">Hoặc kéo thanh thời gian</label>
-            <input type="range" id="vtSeek" min="0" max="100" value="0" step="0.01" style="width:100%;" />
-            <div class="d-flex align-center" style="justify-content:space-between;">
-              <span class="text-muted text-sm" id="vtCurrent">0:00</span>
-              <span class="text-muted text-sm" id="vtDuration"></span>
-            </div>
-          </div>
-          <button class="btn btn-primary" id="vtCapture" style="align-self:flex-end;">Capture</button>
+
+          <button type="button" class="btn btn-primary w-full mt-2" id="vtCapture">Chụp Frame Hiện Tại</button>
         </div>
       </div>
 
-      <div class="card mt-2" id="vtResultCard" style="display:none;">
-        <div class="d-flex align-center gap-1 mb-1" style="justify-content:space-between;">
-          <span class="field-label" style="margin:0;" id="vtFrameInfo"></span>
-          <div class="btn-group" style="margin:0;">
-            <button class="btn btn-primary btn-sm" id="vtDownloadPng">Download PNG</button>
-            <button class="btn btn-secondary btn-sm" id="vtDownloadJpeg">Download JPEG</button>
+      <div class="card" id="vtResultCard" style="display:none;">
+        <div class="card-header">
+          <span class="field-label" id="vtFrameInfo">Frame đã chụp</span>
+          <div class="d-flex gap-1">
+            <button type="button" class="btn btn-primary btn-sm" id="vtDownloadPng">Download PNG</button>
+            <button type="button" class="btn btn-secondary btn-sm" id="vtDownloadJpeg">Download JPEG</button>
           </div>
         </div>
-        <canvas id="vtCanvas" style="max-width:100%; max-height:500px; border-radius:4px; margin-top:4px;"></canvas>
+        <div style="text-align:center; background:var(--code-bg); border:1px solid var(--border); border-radius:var(--radius); padding:12px;">
+          <canvas id="vtCanvas" style="max-width:100%; max-height:460px; border-radius:4px;"></canvas>
+        </div>
       </div>
     </div>
   `;
@@ -61,25 +84,38 @@ export function getHtml() {
 export function init() {
   const dropZone = document.getElementById('vtDropZone');
   const fileInput = document.getElementById('vtFileInput');
+  const dropLabel = document.getElementById('vtDropLabel');
   const mainEl = document.getElementById('vtMain');
   const video = document.getElementById('vtVideo');
+  const videoDims = document.getElementById('vtVideoDims');
   const seekInput = document.getElementById('vtSeek');
   const hInput = document.getElementById('vtH');
   const mInput = document.getElementById('vtM');
   const sInput = document.getElementById('vtS');
-  const curLabel = document.getElementById('vtCurrent');
-  const durLabel = document.getElementById('vtDuration');
+  const readout = document.getElementById('vtTimeReadout');
   const captureBtn = document.getElementById('vtCapture');
   const resultCard = document.getElementById('vtResultCard');
   const canvas = document.getElementById('vtCanvas');
   const frameInfo = document.getElementById('vtFrameInfo');
-  const dropLabel = document.getElementById('vtDropLabel');
   const ctx = canvas.getContext('2d');
 
+  let activeObjectUrl = null;
+  let duration = 0;
+
   const fmtTime = (s) => {
-    const m = Math.floor(s / 60);
-    const sec = (s % 60).toFixed(1);
+    const safe = Math.max(0, Number(s) || 0);
+    const m = Math.floor(safe / 60);
+    const sec = (safe % 60).toFixed(1);
     return `${m}:${sec.padStart(4, '0')}`;
+  };
+
+  const syncTimeUI = (t) => {
+    const clamped = Math.max(0, Math.min(duration || 0, t));
+    hInput.value = String(Math.floor(clamped / 3600));
+    mInput.value = String(Math.floor((clamped % 3600) / 60));
+    sInput.value = (clamped % 60).toFixed(1);
+    seekInput.value = String(clamped);
+    readout.textContent = `${fmtTime(clamped)} / ${fmtTime(duration)}`;
   };
 
   const loadFile = (file) => {
@@ -87,15 +123,20 @@ export function init() {
       window.showToast('Chỉ hỗ trợ file video', 'error');
       return;
     }
-    const url = URL.createObjectURL(file);
-    video.src = url;
+    if (activeObjectUrl) URL.revokeObjectURL(activeObjectUrl);
+    activeObjectUrl = URL.createObjectURL(file);
+    video.src = activeObjectUrl;
     video.load();
     dropLabel.textContent = file.name;
+    resultCard.style.display = 'none';
+
     video.addEventListener(
       'loadedmetadata',
       () => {
-        seekInput.max = video.duration;
-        durLabel.textContent = fmtTime(video.duration);
+        duration = video.duration || 0;
+        seekInput.max = String(duration);
+        videoDims.textContent = `${video.videoWidth}×${video.videoHeight}px`;
+        syncTimeUI(0);
         mainEl.style.display = '';
       },
       { once: true },
@@ -117,63 +158,69 @@ export function init() {
     if (e.dataTransfer.files[0]) loadFile(e.dataTransfer.files[0]);
   });
 
-  // Seekbar → HMS
-  seekInput.addEventListener('input', () => {
-    const t = parseFloat(seekInput.value);
-    const h = Math.floor(t / 3600);
-    const m = Math.floor((t % 3600) / 60);
-    const s = (t % 60).toFixed(1);
-    hInput.value = h;
-    mInput.value = m;
-    sInput.value = s;
-    curLabel.textContent = fmtTime(t);
+  video.addEventListener('timeupdate', () => {
+    syncTimeUI(video.currentTime);
   });
 
-  // HMS → seekbar
+  seekInput.addEventListener('input', () => {
+    const t = parseFloat(seekInput.value) || 0;
+    video.currentTime = t;
+    syncTimeUI(t);
+  });
+
   const hmsToSec = () =>
     (+hInput.value || 0) * 3600 + (+mInput.value || 0) * 60 + (+sInput.value || 0);
+
   [hInput, mInput, sInput].forEach((el) => {
-    el.addEventListener('input', () => {
-      const t = hmsToSec();
-      seekInput.value = t;
-      curLabel.textContent = fmtTime(t);
+    el.addEventListener('change', () => {
+      const t = Math.max(0, Math.min(duration, hmsToSec()));
+      video.currentTime = t;
+      syncTimeUI(t);
     });
   });
 
-  captureBtn.addEventListener('click', () => {
-    const t = hmsToSec();
-    video.currentTime = t;
-    video.addEventListener(
-      'seeked',
-      () => {
-        canvas.width = video.videoWidth;
-        canvas.height = video.videoHeight;
-        ctx.drawImage(video, 0, 0);
-        frameInfo.textContent = `${video.videoWidth} × ${video.videoHeight}px · t=${fmtTime(t)}`;
-        resultCard.style.display = '';
-      },
-      { once: true },
-    );
+  document.querySelectorAll('.vt-step').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      const delta = parseFloat(btn.dataset.step) || 0;
+      const next = Math.max(0, Math.min(duration, video.currentTime + delta));
+      video.currentTime = next;
+      syncTimeUI(next);
+    });
   });
+
+  const captureCurrentFrame = () => {
+    if (!video.videoWidth) return;
+    canvas.width = video.videoWidth;
+    canvas.height = video.videoHeight;
+    ctx.drawImage(video, 0, 0);
+    frameInfo.textContent = `${video.videoWidth}×${video.videoHeight}px · t = ${fmtTime(video.currentTime)}`;
+    resultCard.style.display = '';
+  };
+
+  captureBtn.addEventListener('click', captureCurrentFrame);
 
   const download = (fmt, ext, q = 0.92) => {
     canvas.toBlob(
       (blob) => {
+        if (!blob) return;
+        const url = URL.createObjectURL(blob);
         const a = document.createElement('a');
-        a.href = URL.createObjectURL(blob);
+        a.href = url;
         a.download = `thumbnail.${ext}`;
         a.click();
-        URL.revokeObjectURL(a.href);
+        URL.revokeObjectURL(url);
       },
       fmt,
       q,
     );
   };
 
-  document
-    .getElementById('vtDownloadPng')
-    .addEventListener('click', () => download('image/png', 'png'));
+  document.getElementById('vtDownloadPng').addEventListener('click', () => download('image/png', 'png'));
   document
     .getElementById('vtDownloadJpeg')
     .addEventListener('click', () => download('image/jpeg', 'jpg', 0.92));
+
+  return () => {
+    if (activeObjectUrl) URL.revokeObjectURL(activeObjectUrl);
+  };
 }

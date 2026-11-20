@@ -1,31 +1,95 @@
 /**
- * CSS Gradient Generator — linear, radial, conic with live preview
+ * CSS Gradient Generator — linear, radial, conic with presets & live preview
  */
+
+const PRESETS = [
+  {
+    label: 'Ocean',
+    type: 'linear',
+    angle: 135,
+    stops: [
+      { color: '#0066ff', pos: 0 },
+      { color: '#00ccff', pos: 100 },
+    ],
+  },
+  {
+    label: 'Sunset',
+    type: 'linear',
+    angle: 120,
+    stops: [
+      { color: '#ff512f', pos: 0 },
+      { color: '#f09819', pos: 100 },
+    ],
+  },
+  {
+    label: 'Emerald',
+    type: 'linear',
+    angle: 135,
+    stops: [
+      { color: '#11998e', pos: 0 },
+      { color: '#38ef7d', pos: 100 },
+    ],
+  },
+  {
+    label: 'Berry',
+    type: 'linear',
+    angle: 135,
+    stops: [
+      { color: '#6366f1', pos: 0 },
+      { color: '#a855f7', pos: 50 },
+      { color: '#ec4899', pos: 100 },
+    ],
+  },
+  {
+    label: 'Minimal Dark',
+    type: 'linear',
+    angle: 160,
+    stops: [
+      { color: '#18181b', pos: 0 },
+      { color: '#3f3f46', pos: 100 },
+    ],
+  },
+];
 
 export function getHtml() {
   return `
     <div class="tool-header">
       <h1>CSS Gradient Generator</h1>
-      <p>Tạo CSS gradient: linear, radial, conic với nhiều color stops.</p>
+      <p>Tạo CSS gradient (linear, radial, conic) với nhiều điểm màu và bộ Preset tinh gọn.</p>
     </div>
 
-    <!-- Type + Angle/Shape -->
     <div class="card">
-      <div class="row" style="flex-wrap:wrap; gap:12px; align-items:flex-end;">
+      <div class="card-header">
+        <span class="field-label">Mẫu nhanh (Presets)</span>
+        <div class="preset-strip">
+          ${PRESETS.map(
+            (p, idx) =>
+              `<button type="button" class="btn btn-secondary btn-sm gg-preset" data-idx="${idx}">${p.label}</button>`,
+          ).join('')}
+          <button type="button" class="btn btn-ghost btn-sm" id="ggRandom">Ngẫu nhiên</button>
+        </div>
+      </div>
+
+      <div class="row" style="align-items:flex-end;">
         <div style="flex:0 0 auto;">
-          <label class="field-label">Loại</label>
-          <div class="btn-group" style="margin:0;">
-            <button class="btn btn-secondary gg-type active" data-type="linear">Linear</button>
-            <button class="btn btn-secondary gg-type" data-type="radial">Radial</button>
-            <button class="btn btn-secondary gg-type" data-type="conic">Conic</button>
+          <span class="field-label">Loại Gradient</span>
+          <div class="seg-group">
+            <button type="button" class="btn gg-type active" data-type="linear">Linear</button>
+            <button type="button" class="btn gg-type" data-type="radial">Radial</button>
+            <button type="button" class="btn gg-type" data-type="conic">Conic</button>
           </div>
         </div>
-        <div id="ggAngleWrap" style="flex:0 0 200px;">
-          <label class="field-label">Góc: <span id="ggAngleVal" class="mono">135°</span></label>
-          <input type="range" id="ggAngle" min="0" max="360" value="135" style="width:100%;" />
+        <div id="ggAngleWrap" class="flex-1" style="min-width:180px;">
+          <label class="field-label" for="ggAngle" style="display:flex; justify-content:space-between;">
+            <span>Góc xoay</span>
+            <span id="ggAngleVal" class="mono">135°</span>
+          </label>
+          <div style="height:38px; display:flex; align-items:center;">
+            <input type="range" id="ggAngle" min="0" max="360" value="135" />
+          </div>
         </div>
-        <div id="ggShapeWrap" style="flex:0 0 auto; display:none;">
-          <label class="field-label">Shape</label>
+        <div id="ggShapeWrap" style="flex:0 0 160px; display:none;">
+          <label class="field-label" for="ggShape">Hình dạng (Shape)</label>
           <select id="ggShape">
             <option value="ellipse">Ellipse</option>
             <option value="circle">Circle</option>
@@ -34,28 +98,29 @@ export function getHtml() {
       </div>
     </div>
 
-    <!-- Color stops -->
-    <div class="card mt-2">
-      <div class="d-flex align-center gap-1 mb-2" style="justify-content:space-between;">
-        <span class="field-label" style="margin:0;">Color Stops</span>
-        <button class="btn btn-secondary btn-sm" id="ggAddStop">+ Add stop</button>
+    <div class="card">
+      <div class="card-header">
+        <span class="field-label">Color Stops</span>
+        <button type="button" class="btn btn-secondary btn-sm" id="ggAddStop">+ Thêm điểm màu</button>
       </div>
-      <div id="ggStops" style="display:flex; flex-direction:column; gap:8px;"></div>
+      <div id="ggStops" style="display:flex; flex-direction:column; gap:10px;"></div>
     </div>
 
-    <!-- Preview -->
-    <div class="card mt-2">
-      <div class="field-label">Preview</div>
-      <div id="ggPreview" style="height:160px; border-radius:var(--radius); margin-top:8px; border:1px solid var(--border);"></div>
+    <div class="card">
+      <div class="card-header">
+        <span class="field-label">Preview</span>
+      </div>
+      <div id="ggPreview" style="height:180px; border-radius:var(--radius); border:1px solid var(--border);"></div>
     </div>
 
-    <!-- Output -->
-    <div class="card mt-2">
-      <div class="d-flex align-center gap-1 mb-1" style="justify-content:space-between;">
-        <span class="field-label" style="margin:0;">CSS Output</span>
-        <button class="copy-btn" id="ggCopyBtn" style="position:static;">Copy</button>
+    <div class="card">
+      <div class="card-header">
+        <span class="field-label">CSS Output</span>
+        <button type="button" class="copy-btn" id="ggCopyBtn">Copy</button>
       </div>
-      <pre id="ggCssOutput" class="mono" style="font-size:13px; padding:10px 12px; background:var(--surface-2); border-radius:var(--radius); margin:0; white-space:pre-wrap; word-break:break-all;"></pre>
+      <div class="output-box">
+        <pre id="ggCssOutput" style="margin:0;"></pre>
+      </div>
     </div>
   `;
 }
@@ -71,21 +136,27 @@ export function init() {
   const shapeSel = document.getElementById('ggShape');
   const stopsEl = document.getElementById('ggStops');
   const addBtn = document.getElementById('ggAddStop');
+  const randomBtn = document.getElementById('ggRandom');
 
   let type = 'linear';
   let stops = [
-    { color: '#0066FF', pos: 0 },
-    { color: '#00CCFF', pos: 50 },
-    { color: '#9933FF', pos: 100 },
+    { color: '#0066ff', pos: 0 },
+    { color: '#00ccff', pos: 50 },
+    { color: '#9933ff', pos: 100 },
   ];
+
+  const syncTypeUI = () => {
+    document.querySelectorAll('.gg-type').forEach((b) => {
+      b.classList.toggle('active', b.dataset.type === type);
+    });
+    angleWrap.style.display = type === 'linear' || type === 'conic' ? '' : 'none';
+    shapeWrap.style.display = type === 'radial' ? '' : 'none';
+  };
 
   document.querySelectorAll('.gg-type').forEach((btn) => {
     btn.addEventListener('click', () => {
-      document.querySelectorAll('.gg-type').forEach((b) => b.classList.remove('active'));
-      btn.classList.add('active');
       type = btn.dataset.type;
-      angleWrap.style.display = type === 'linear' || type === 'conic' ? '' : 'none';
-      shapeWrap.style.display = type === 'radial' ? '' : 'none';
+      syncTypeUI();
       render();
     });
   });
@@ -108,7 +179,7 @@ export function init() {
   const render = () => {
     const css = buildGradient();
     previewEl.style.background = css;
-    cssOutput.textContent = `background: ${css};\nbackground-image: ${css};`;
+    cssOutput.textContent = `background: ${css};`;
   };
 
   const renderStops = () => {
@@ -116,12 +187,11 @@ export function init() {
       .map(
         (s, i) => `
       <div class="d-flex align-center gap-2">
-        <input type="color" class="gg-stop-color" data-i="${i}" value="${s.color}"
-          style="width:48px; height:36px; cursor:pointer; padding:2px; border-radius:4px; border:1px solid var(--border);" />
-        <label class="field-label" style="margin:0; white-space:nowrap;">Position</label>
-        <input type="range" class="gg-stop-pos flex-1" data-i="${i}" min="0" max="100" value="${s.pos}" />
-        <span class="mono text-sm" id="ggPosVal_${i}" style="min-width:36px;">${s.pos}%</span>
-        <button class="btn btn-ghost btn-sm gg-del" data-i="${i}" ${stops.length <= 2 ? 'disabled' : ''}>×</button>
+        <input type="color" class="gg-stop-color" data-i="${i}" value="${s.color}" aria-label="Color stop ${i + 1}" />
+        <code class="mono text-sm" id="ggHex_${i}" style="min-width:64px; color:var(--text-2);">${s.color}</code>
+        <input type="range" class="gg-stop-pos flex-1" data-i="${i}" min="0" max="100" value="${s.pos}" aria-label="Vị trí stop ${i + 1}" />
+        <span class="mono text-sm" id="ggPosVal_${i}" style="min-width:38px; text-align:right;">${s.pos}%</span>
+        <button type="button" class="btn btn-ghost btn-sm gg-del" data-i="${i}" ${stops.length <= 2 ? 'disabled' : ''} style="min-height:30px; padding:4px 8px;">×</button>
       </div>
     `,
       )
@@ -129,42 +199,70 @@ export function init() {
 
     stopsEl.querySelectorAll('.gg-stop-color').forEach((el) => {
       el.addEventListener('input', () => {
-        stops[+el.dataset.i].color = el.value;
+        const idx = Number(el.dataset.i);
+        stops[idx].color = el.value;
+        document.getElementById(`ggHex_${idx}`).textContent = el.value;
         render();
       });
     });
     stopsEl.querySelectorAll('.gg-stop-pos').forEach((el) => {
       el.addEventListener('input', () => {
-        const i = +el.dataset.i;
-        stops[i].pos = +el.value;
-        document.getElementById(`ggPosVal_${i}`).textContent = el.value + '%';
+        const idx = Number(el.dataset.i);
+        stops[idx].pos = Number(el.value);
+        document.getElementById(`ggPosVal_${idx}`).textContent = `${el.value}%`;
         render();
       });
     });
     stopsEl.querySelectorAll('.gg-del').forEach((btn) => {
       btn.addEventListener('click', () => {
-        stops.splice(+btn.dataset.i, 1);
+        stops.splice(Number(btn.dataset.i), 1);
         renderStops();
         render();
       });
     });
   };
 
-  addBtn.addEventListener('click', () => {
-    stops.push({
-      color:
-        '#' +
-        Math.floor(Math.random() * 16777215)
-          .toString(16)
-          .padStart(6, '0'),
-      pos: 75,
+  const randHex = () =>
+    '#' +
+    Math.floor(Math.random() * 0xffffff)
+      .toString(16)
+      .padStart(6, '0');
+
+  document.querySelectorAll('.gg-preset').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      const p = PRESETS[Number(btn.dataset.idx)];
+      if (!p) return;
+      type = p.type;
+      angleInput.value = String(p.angle);
+      angleVal.textContent = `${p.angle}°`;
+      stops = p.stops.map((s) => ({ ...s }));
+      syncTypeUI();
+      renderStops();
+      render();
     });
+  });
+
+  randomBtn.addEventListener('click', () => {
+    const angle = Math.floor(Math.random() * 360);
+    angleInput.value = String(angle);
+    angleVal.textContent = `${angle}°`;
+    stops = [
+      { color: randHex(), pos: 0 },
+      { color: randHex(), pos: 100 },
+    ];
+    renderStops();
+    render();
+  });
+
+  addBtn.addEventListener('click', () => {
+    stops.push({ color: randHex(), pos: 75 });
     renderStops();
     render();
   });
 
   copyBtn.addEventListener('click', () => window.copyToClipboard(cssOutput.textContent, copyBtn));
 
+  syncTypeUI();
   renderStops();
   render();
 }

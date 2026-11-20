@@ -1,6 +1,6 @@
 /**
  * Multi Tool v2 — Core App
- * Hash-based routing + module cache + smooth transitions
+ * Hash-based routing + concurrency-safe loader + hover/idle preloading + cleanup lifecycle
  */
 
 // ── Tool registry ──────────────────────────────────────────────────────────
@@ -56,6 +56,7 @@ const TOOLS = {
   'link-shortener': { file: 'tools/linkShortener.js', label: 'Link Shortener' },
   'file-uploader': { file: 'tools/fileUploader.js', label: 'File Inspector' },
   'currency-converter': { file: 'tools/currencyConverter.js', label: 'Currency Converter' },
+  'facebook-utils': { file: 'tools/facebookUtils.js', label: 'Facebook Utils' },
 
   // Network
   'speed-test': { file: 'tools/speedTest.js', label: 'Speed Test' },
@@ -65,8 +66,9 @@ const TOOLS = {
 // ── Glob all tool modules so Vite bundles them as chunks at build time ────
 const toolGlob = import.meta.glob('./tools/*.js');
 
-// ── Module cache ──────────────────────────────────────────────────────────
+// ── Module cache & in-flight deduplication ────────────────────────────────
 const moduleCache = new Map();
+const inflightLoads = new Map();
 
 // ── DOM refs ───────────────────────────────────────────────────────────────
 const panel = document.getElementById('panel');
@@ -78,14 +80,12 @@ const themeToggle = document.getElementById('themeToggle');
 const topbarTitle = document.getElementById('topbarTitle');
 const toolSearch = document.getElementById('toolSearch');
 const navItems = document.querySelectorAll('.nav-item[data-tool]');
-const welcomeScreen = document.getElementById('welcomeScreen');
-const welcomeGrid = document.getElementById('welcomeGrid');
+const brandHome = document.getElementById('brandHome');
 
 // ── Theme ──────────────────────────────────────────────────────────────────
-// Note: initial dark class is applied synchronously by the inline script
-// in <head> before first paint — see index.html. This listener handles toggle.
 themeToggle.addEventListener('click', () => {
   const isDark = document.body.classList.toggle('dark');
+  document.documentElement.classList.toggle('dark', isDark);
   localStorage.setItem('theme', isDark ? 'dark' : 'light');
 });
 
@@ -106,16 +106,15 @@ hamburger.addEventListener('click', openSidebar);
 sidebarClose.addEventListener('click', closeSidebar);
 backdrop.addEventListener('click', closeSidebar);
 
-// ── Sidebar search ─────────────────────────────────────────────────────────
+// ── Sidebar search & '/' shortcut ──────────────────────────────────────────
 toolSearch.addEventListener('input', () => {
   const q = toolSearch.value.trim().toLowerCase();
   navItems.forEach((item) => {
     const label = item.textContent.trim().toLowerCase();
-    item.classList.toggle('hidden', q.length > 0 && !label.includes(q));
+    const slug = (item.dataset.tool || '').toLowerCase();
+    item.classList.toggle('hidden', q.length > 0 && !label.includes(q) && !slug.includes(q));
   });
-  // Also hide group labels if all items in group are hidden
   document.querySelectorAll('.nav-group-label').forEach((label) => {
-    // Find all nav-items until next label
     let el = label.nextElementSibling;
     let hasVisible = false;
     while (el && !el.classList.contains('nav-group-label')) {
@@ -126,80 +125,155 @@ toolSearch.addEventListener('input', () => {
   });
 });
 
-// ── Tool loading ───────────────────────────────────────────────────────────
-let currentTool = null;
-let isTransitioning = false;
-let welcomeGridBuilt = false;
+document.addEventListener('keydown', (e) => {
+  if (
+    e.key === '/' &&
+    !e.ctrlKey &&
+    !e.metaKey &&
+    !e.altKey &&
+    !['INPUT', 'TEXTAREA', 'SELECT'].includes(document.activeElement?.tagName)
+  ) {
+    e.preventDefault();
+    if (window.innerWidth <= 768) openSidebar();
+    toolSearch.focus();
+  }
+});
 
-async function loadTool(slug) {
-  if (slug === currentTool || isTransitioning) return;
+// ── Preloader (with in-flight deduplication) ───────────────────────────────
+function preloadTool(slug) {
+  if (!slug) return Promise.resolve(null);
+  if (moduleCache.has(slug)) return Promise.resolve(moduleCache.get(slug));
+  if (inflightLoads.has(slug)) return inflightLoads.get(slug);
 
   const toolDef = TOOLS[slug];
-  if (!toolDef) return;
+  if (!toolDef) return Promise.resolve(null);
 
-  isTransitioning = true;
-  currentTool = slug;
+  const loader = toolGlob[`./${toolDef.file}`];
+  if (!loader) return Promise.reject(new Error(`Module not found: ${toolDef.file}`));
 
-  // Update active nav item
+  const promise = loader()
+    .then((mod) => {
+      moduleCache.set(slug, mod);
+      inflightLoads.delete(slug);
+      return mod;
+    })
+    .catch((err) => {
+      inflightLoads.delete(slug);
+      throw err;
+    });
+
+  inflightLoads.set(slug, promise);
+  return promise;
+}
+
+// ── Tool lifecycle & concurrency-safe navigation ───────────────────────────
+let currentTool = null;
+let currentNavToken = 0;
+let activeCleanup = null;
+
+function runCleanup() {
+  if (typeof activeCleanup === 'function') {
+    try {
+      activeCleanup();
+    } catch (err) {
+      console.error('[cleanup]', err);
+    }
+    activeCleanup = null;
+  }
+}
+
+function syncNavUI(slug, label) {
   navItems.forEach((item) => {
     item.classList.toggle('active', item.dataset.tool === slug);
   });
+  topbarTitle.textContent = label || 'Multi Tool';
+  document.title = label ? `${label} — Multi Tool` : 'Multi Tool';
+}
 
-  // Update topbar title
-  topbarTitle.textContent = toolDef.label;
+function triggerPanelEnter() {
+  panel.classList.remove('panel-enter');
+  // Force style flush so rapid consecutive switches replay the subtle enter animation cleanly
+  void panel.offsetWidth;
+  panel.classList.add('panel-enter');
+}
 
-  // Animate out
-  panel.classList.add('transitioning');
+function renderToolModule(slug, mod) {
+  const getHtml =
+    mod.getHtml ??
+    Object.values(mod).find((v) => typeof v === 'function' && v.name?.startsWith('get'));
+  const init =
+    mod.init ??
+    Object.values(mod).find((v) => typeof v === 'function' && v.name?.startsWith('init'));
 
-  // Wait for CSS transition (120ms)
-  await new Promise((r) => setTimeout(r, 120));
+  if (getHtml && init) {
+    panel.dataset.activeTool = slug;
+    panel.innerHTML = getHtml();
+    panel.scrollTop = 0;
+    window.scrollTo({ top: 0, behavior: 'instant' });
+    const cleanup = init();
+    if (typeof cleanup === 'function') activeCleanup = cleanup;
+    triggerPanelEnter();
+  } else {
+    panel.dataset.activeTool = slug;
+    panel.innerHTML = `<div class="tool-header"><h1>Lỗi</h1><p>Không tìm thấy hàm khởi tạo cho tool này.</p></div>`;
+  }
+}
 
-  try {
-    // Load module (cached after first load)
-    let mod = moduleCache.get(slug);
-    if (!mod) {
-      const loader = toolGlob[`./${toolDef.file}`];
-      if (!loader) throw new Error(`Module not found: ${toolDef.file}`);
-      mod = await loader();
-      moduleCache.set(slug, mod);
-    }
-
-    // Find getHtml + init functions by convention
-    const getHtml =
-      mod.getHtml ??
-      Object.values(mod).find((v) => typeof v === 'function' && v.name?.startsWith('get'));
-    const init =
-      mod.init ??
-      Object.values(mod).find((v) => typeof v === 'function' && v.name?.startsWith('init'));
-
-    if (getHtml && init) {
-      panel.innerHTML = getHtml();
-      // Hide welcome screen if it's still in DOM
-      welcomeScreen?.remove();
-      init();
-    } else {
-      panel.innerHTML = `<div class="tool-header"><h1>Lỗi</h1><p>Không tìm thấy hàm khởi tạo cho tool này.</p></div>`;
-    }
-  } catch (err) {
-    console.error('[loadTool]', slug, err);
-    panel.innerHTML = `<div class="tool-header"><h1>Lỗi tải tool</h1><p class="text-muted">${err.message}</p></div>`;
+async function loadTool(slug) {
+  const toolDef = TOOLS[slug];
+  if (!toolDef) {
+    showWelcome();
+    return;
   }
 
-  // Scroll to top
-  panel.scrollTop = 0;
-  window.scrollTo({ top: 0, behavior: 'instant' });
+  // Already active and rendered in DOM
+  if (slug === currentTool && panel.dataset.activeTool === slug) {
+    if (window.innerWidth <= 768) closeSidebar();
+    return;
+  }
 
-  // Animate in
-  // Use rAF to ensure DOM is painted before removing transitioning class
-  requestAnimationFrame(() => {
-    requestAnimationFrame(() => {
-      panel.classList.remove('transitioning');
-      isTransitioning = false;
-    });
-  });
+  const token = ++currentNavToken;
+  runCleanup();
+  currentTool = slug;
 
-  // Close mobile sidebar if open
+  // Immediate synchronous UI feedback (0ms) so URL, sidebar, and topbar never drift
+  syncNavUI(slug, toolDef.label);
   if (window.innerWidth <= 768) closeSidebar();
+
+  const cached = moduleCache.get(slug);
+  if (cached) {
+    try {
+      renderToolModule(slug, cached);
+    } catch (err) {
+      console.error('[loadTool]', slug, err);
+      panel.innerHTML = `<div class="tool-header"><h1>Lỗi khởi tạo tool</h1><p class="text-muted">${err.message}</p></div>`;
+    }
+    return;
+  }
+
+  // Only show loading indicator if the chunk takes > 60ms to arrive
+  const loadingTimer = setTimeout(() => {
+    if (token !== currentNavToken) return;
+    panel.innerHTML = `
+      <div class="tool-loading">
+        <span class="tool-spinner" aria-hidden="true"></span>
+        <span>Đang tải ${toolDef.label}...</span>
+      </div>`;
+  }, 60);
+
+  try {
+    const mod = await preloadTool(slug);
+    clearTimeout(loadingTimer);
+    // Abort render if user already navigated elsewhere while chunk was fetching
+    if (token !== currentNavToken) return;
+    renderToolModule(slug, mod);
+  } catch (err) {
+    clearTimeout(loadingTimer);
+    if (token !== currentNavToken) return;
+    console.error('[loadTool]', slug, err);
+    panel.dataset.activeTool = slug;
+    panel.innerHTML = `<div class="tool-header"><h1>Lỗi tải tool</h1><p class="text-muted">${err.message}</p></div>`;
+  }
 }
 
 // ── Hash routing ───────────────────────────────────────────────────────────
@@ -212,61 +286,91 @@ function handleRoute() {
   if (slug && TOOLS[slug]) {
     loadTool(slug);
   } else {
-    // Show welcome screen
     showWelcome();
   }
 }
 
 function showWelcome() {
+  ++currentNavToken;
+  runCleanup();
   currentTool = null;
-  navItems.forEach((item) => item.classList.remove('active'));
-  topbarTitle.textContent = 'Multi Tool';
+  delete panel.dataset.activeTool;
+  syncNavUI(null, 'Multi Tool');
 
-  // Rebuild welcome screen only when a tool removed it; keep static HTML on first load
   if (!document.getElementById('welcomeScreen')) {
-    welcomeGridBuilt = false;
     panel.innerHTML = `
       <div class="welcome-screen" id="welcomeScreen">
         <div class="welcome-inner">
           <h2>Multi Tool</h2>
-          <p>Bộ công cụ lập trình & tiện ích, chạy hoàn toàn trên trình duyệt.</p>
-          <p class="welcome-cache-hint">💡 Lần đầu mở mỗi tool có thể mất vài giây để trình duyệt tải về. Các lần sau sẽ mở ngay lập tức nhờ cache.</p>
+          <p>Bộ công cụ lập trình &amp; tiện ích đa năng, chạy hoàn toàn trên trình duyệt.</p>
           <div class="welcome-grid" id="welcomeGrid"></div>
         </div>
       </div>
     `;
   }
 
-  // Populate welcome grid only once (skip rebuild on repeated navigations back)
-  if (!welcomeGridBuilt) {
-    const grid = document.getElementById('welcomeGrid');
-    if (grid) {
-      navItems.forEach((item) => {
-        const slug = item.dataset.tool;
-        const label = item.textContent.trim();
-        const svgEl = item.querySelector('svg');
-        const a = document.createElement('a');
-        a.className = 'welcome-card';
-        a.href = `#${slug}`;
-        a.innerHTML = `${svgEl ? svgEl.outerHTML : ''}<span>${label}</span>`;
-        grid.appendChild(a);
-      });
-      welcomeGridBuilt = true;
-    }
+  const grid = document.getElementById('welcomeGrid');
+  if (grid && grid.childElementCount === 0) {
+    const frag = document.createDocumentFragment();
+    navItems.forEach((item) => {
+      const slug = item.dataset.tool;
+      const label = item.textContent.trim();
+      const svgEl = item.querySelector('svg');
+      const a = document.createElement('a');
+      a.className = 'welcome-card';
+      a.href = `#${slug}`;
+      a.dataset.tool = slug;
+      a.innerHTML = `${svgEl ? svgEl.outerHTML : ''}<span>${label}</span>`;
+      frag.appendChild(a);
+    });
+    grid.appendChild(frag);
   }
+
+  panel.scrollTop = 0;
+  if (window.innerWidth <= 768) closeSidebar();
 }
 
 // Listen to hash changes
 window.addEventListener('hashchange', handleRoute);
 
+// Brand click returns to welcome screen without full reload
+brandHome?.addEventListener('click', (e) => {
+  if (location.hash) {
+    e.preventDefault();
+    history.pushState(null, '', location.pathname + location.search);
+    handleRoute();
+  }
+});
+
+// Resync guard when clicking an active/current nav item
+sidebar.addEventListener('click', (e) => {
+  const item = e.target.closest('.nav-item[data-tool]');
+  if (!item) return;
+  const slug = item.dataset.tool;
+  if (getSlugFromHash() === slug && panel.dataset.activeTool !== slug) {
+    loadTool(slug);
+  }
+});
+
+// Hover/focus intent preloading so modules are ready before click completes
+const handlePreloadIntent = (e) => {
+  const target = e.target.closest('[data-tool]');
+  if (target?.dataset.tool) {
+    preloadTool(target.dataset.tool).catch(() => {});
+  }
+};
+sidebar.addEventListener('pointerover', handlePreloadIntent);
+sidebar.addEventListener('focusin', handlePreloadIntent);
+panel.addEventListener('pointerover', handlePreloadIntent);
+panel.addEventListener('focusin', handlePreloadIntent);
+
 // ── Init ───────────────────────────────────────────────────────────────────
 handleRoute();
 
 // ── Idle preloading ────────────────────────────────────────────────────────
-// After the initial route is handled, preload the most popular tools in the
-// background so they feel instant when the user first clicks them.
-// Falls back to setTimeout for browsers without requestIdleCallback (old Safari).
-const PRELOAD_TOOLS = [
+// Preload popular tools first, then remaining lightweight tools in gentle batches
+// (skipping 'fake-data' because @faker-js/faker is ~2.4 MB and loads on demand/hover).
+const PRIORITY_PRELOAD = [
   'json-formatter',
   'base64-text',
   'password-generator',
@@ -275,29 +379,35 @@ const PRELOAD_TOOLS = [
   'regex-tester',
 ];
 
-const scheduleIdle = window.requestIdleCallback
-  ? (cb) => window.requestIdleCallback(cb, { timeout: 4000 })
-  : (cb) => setTimeout(cb, 300);
+const ALL_LIGHT_TOOLS = [
+  ...PRIORITY_PRELOAD,
+  ...Object.keys(TOOLS).filter((s) => !PRIORITY_PRELOAD.includes(s) && s !== 'fake-data'),
+];
 
-scheduleIdle(() => {
-  for (const slug of PRELOAD_TOOLS) {
-    if (moduleCache.has(slug)) continue;
-    const toolDef = TOOLS[slug];
-    if (!toolDef) continue;
-    const loader = toolGlob[`./${toolDef.file}`];
-    if (loader)
-      loader()
-        .then((mod) => moduleCache.set(slug, mod))
-        .catch(() => {});
-  }
-});
+const scheduleIdle = window.requestIdleCallback
+  ? (cb) => window.requestIdleCallback(cb, { timeout: 3000 })
+  : (cb) => setTimeout(cb, 250);
+
+let preloadCursor = 0;
+function preloadNextBatch() {
+  const batch = ALL_LIGHT_TOOLS.slice(preloadCursor, preloadCursor + 4);
+  preloadCursor += 4;
+  if (!batch.length) return;
+  Promise.allSettled(batch.map((slug) => preloadTool(slug))).then(() => {
+    if (preloadCursor < ALL_LIGHT_TOOLS.length) {
+      scheduleIdle(preloadNextBatch);
+    }
+  });
+}
+
+scheduleIdle(preloadNextBatch);
 
 // ── Toast utility (global) ─────────────────────────────────────────────────
 const toastContainer = document.createElement('div');
 toastContainer.id = 'toastContainer';
 document.body.appendChild(toastContainer);
 
-window.showToast = function (message, type = 'default', duration = 2500) {
+window.showToast = function (message, type = 'default', duration = 2400) {
   const toast = document.createElement('div');
   toast.className = `toast${type !== 'default' ? ` toast-${type}` : ''}`;
   toast.textContent = message;
@@ -314,15 +424,16 @@ window.copyToClipboard = async function (text, btn) {
   try {
     await navigator.clipboard.writeText(text);
     if (btn) {
-      const original = btn.textContent;
+      if (!btn.dataset.origLabel) btn.dataset.origLabel = btn.textContent;
+      clearTimeout(btn._copyTimer);
       btn.textContent = 'Copied!';
       btn.classList.add('copied');
-      setTimeout(() => {
-        btn.textContent = original;
+      btn._copyTimer = setTimeout(() => {
+        btn.textContent = btn.dataset.origLabel;
         btn.classList.remove('copied');
-      }, 1500);
+      }, 1400);
     }
-    showToast('Đã copy!', 'success', 1500);
+    showToast('Đã copy!', 'success', 1400);
   } catch {
     showToast('Không thể copy', 'error');
   }

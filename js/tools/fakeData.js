@@ -1,5 +1,5 @@
 /**
- * Fake Data Generator — using @faker-js/faker
+ * Fake Data Generator — JSON, CSV, HTML Table & SQL INSERT using @faker-js/faker
  */
 
 import { faker } from '@faker-js/faker';
@@ -12,11 +12,7 @@ const FIELDS = [
   { key: 'username', label: 'Username', fn: () => faker.internet.username() },
   { key: 'password', label: 'Password', fn: () => faker.internet.password({ length: 14 }) },
   { key: 'phone', label: 'Phone', fn: () => faker.phone.number() },
-  {
-    key: 'birthday',
-    label: 'Birthday',
-    fn: () => faker.date.birthdate().toISOString().slice(0, 10),
-  },
+  { key: 'birthday', label: 'Birthday', fn: () => faker.date.birthdate().toISOString().slice(0, 10) },
   { key: 'gender', label: 'Gender', fn: () => faker.person.sex() },
   { key: 'jobTitle', label: 'Job Title', fn: () => faker.person.jobTitle() },
   { key: 'company', label: 'Company', fn: () => faker.company.name() },
@@ -37,66 +33,64 @@ const FIELDS = [
   { key: 'amount', label: 'Amount', fn: () => faker.finance.amount() },
   { key: 'currency', label: 'Currency', fn: () => faker.finance.currencyCode() },
   { key: 'sentence', label: 'Sentence', fn: () => faker.lorem.sentence() },
-  { key: 'paragraph', label: 'Paragraph', fn: () => faker.lorem.paragraph() },
-  { key: 'word', label: 'Word', fn: () => faker.lorem.word() },
   { key: 'productName', label: 'Product Name', fn: () => faker.commerce.productName() },
   { key: 'price', label: 'Price', fn: () => faker.commerce.price() },
   { key: 'department', label: 'Department', fn: () => faker.commerce.department() },
   { key: 'image', label: 'Image URL', fn: () => faker.image.url() },
 ];
 
+const escHtml = (s) => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+
 export function getHtml() {
   return `
     <div class="tool-header">
       <h1>Fake Data Generator</h1>
-      <p>Tạo dữ liệu giả ngẫu nhiên (tên, email, địa chỉ, v.v.)</p>
+      <p>Tạo dữ liệu giả ngẫu nhiên (tên, email, địa chỉ, UUID...) và xuất ra JSON, CSV, SQL INSERT hoặc HTML Table.</p>
     </div>
 
     <div class="card">
       <div class="row" style="align-items:flex-end; flex-wrap:wrap; gap:10px;">
-        <div style="flex:0 0 130px;">
-          <label class="field-label">Số dòng</label>
+        <div style="flex:0 0 120px;">
+          <label class="field-label" for="fdRows">Số dòng</label>
           <input type="number" id="fdRows" value="5" min="1" max="200" />
         </div>
-        <div style="flex:0 0 160px;">
-          <label class="field-label">Xuất định dạng</label>
+        <div style="flex:0 0 180px;">
+          <label class="field-label" for="fdFormat">Xuất định dạng</label>
           <select id="fdFormat">
             <option value="json">JSON</option>
             <option value="csv">CSV</option>
+            <option value="sql">SQL INSERT</option>
             <option value="table">Table (HTML)</option>
           </select>
         </div>
-        <div class="d-flex align-center gap-1" style="padding-top:22px;">
-          <button class="btn btn-primary" id="fdGenBtn">Generate</button>
-          <button class="btn btn-ghost" id="fdClearBtn">Xóa</button>
+        <div class="d-flex align-center gap-1" style="flex:0 0 auto;">
+          <button type="button" class="btn btn-primary" id="fdGenBtn">Generate</button>
+          <button type="button" class="btn btn-ghost" id="fdClearBtn">Xóa</button>
         </div>
       </div>
 
-      <!-- Field selector -->
       <div class="mt-2">
-        <div class="d-flex align-center gap-2 mb-1" style="justify-content:space-between; flex-wrap:wrap;">
-          <span class="field-label" style="margin:0;">Chọn trường dữ liệu</span>
-          <div class="btn-group" style="margin:0;">
-            <button class="btn btn-ghost btn-sm" id="fdSelAll">Tất cả</button>
-            <button class="btn btn-ghost btn-sm" id="fdSelNone">Bỏ chọn</button>
-            <button class="btn btn-ghost btn-sm" id="fdSelBasic">Cơ bản</button>
+        <div class="card-header" style="margin-bottom:8px;">
+          <span class="field-label">Chọn trường dữ liệu</span>
+          <div class="d-flex gap-1">
+            <button type="button" class="btn btn-ghost btn-sm" id="fdSelAll">Tất cả</button>
+            <button type="button" class="btn btn-ghost btn-sm" id="fdSelNone">Bỏ chọn</button>
+            <button type="button" class="btn btn-ghost btn-sm" id="fdSelBasic">Cơ bản</button>
           </div>
         </div>
-        <div id="fdFields" style="display:grid; grid-template-columns:repeat(auto-fill, minmax(170px,1fr)); gap:6px;"></div>
+        <div id="fdFields" style="display:grid; grid-template-columns:repeat(auto-fill, minmax(165px,1fr)); gap:8px;"></div>
       </div>
     </div>
 
-    <div class="card mt-2" id="fdResultCard" style="display:none;">
-      <div class="d-flex align-center gap-1 mb-1" style="justify-content:space-between; flex-wrap:wrap;">
-        <span class="field-label" style="margin:0;" id="fdResultLabel"></span>
-        <div class="btn-group" style="margin:0;">
-          <button class="btn btn-secondary btn-sm" id="fdCopyBtn">Copy</button>
-          <button class="btn btn-secondary btn-sm" id="fdDownloadBtn">Download</button>
+    <div class="card" id="fdResultCard" style="display:none;">
+      <div class="card-header">
+        <span class="field-label" id="fdResultLabel"></span>
+        <div class="d-flex gap-1">
+          <button type="button" class="copy-btn" id="fdCopyBtn">Copy</button>
+          <button type="button" class="btn btn-secondary btn-sm" id="fdDownloadBtn">Download</button>
         </div>
       </div>
-      <!-- Table view -->
       <div id="fdTableWrap" class="table-wrap" style="display:none; max-height:400px; overflow:auto;"></div>
-      <!-- Raw output -->
       <div class="output-box" id="fdOutputBox" style="display:none;">
         <pre id="fdPre" style="margin:0; max-height:400px; overflow:auto;"></pre>
       </div>
@@ -105,7 +99,7 @@ export function getHtml() {
 }
 
 export function init() {
-  const BASIC = ['fullName', 'email', 'phone', 'company', 'address', 'city', 'country'];
+  const BASIC = ['fullName', 'email', 'phone', 'company', 'city', 'country'];
   const fieldsEl = document.getElementById('fdFields');
   const genBtn = document.getElementById('fdGenBtn');
   const clearBtn = document.getElementById('fdClearBtn');
@@ -122,41 +116,33 @@ export function init() {
   const rowsInput = document.getElementById('fdRows');
   const formatSel = document.getElementById('fdFormat');
 
-  // Render checkboxes
   fieldsEl.innerHTML = FIELDS.map(
     (f) => `
-    <label class="d-flex align-center gap-2" style="cursor:pointer; font-size:13px;">
+    <label class="checkbox-row">
       <input type="checkbox" class="fd-chk" data-key="${f.key}" ${BASIC.includes(f.key) ? 'checked' : ''} />
-      ${f.label}
+      <span>${f.label}</span>
     </label>
   `,
   ).join('');
 
-  const getSelected = () =>
-    [...fieldsEl.querySelectorAll('.fd-chk:checked')].map((c) => c.dataset.key);
+  const getSelected = () => [...fieldsEl.querySelectorAll('.fd-chk:checked')].map((c) => c.dataset.key);
 
-  selAll.addEventListener('click', () =>
-    fieldsEl.querySelectorAll('.fd-chk').forEach((c) => (c.checked = true)),
-  );
-  selNone.addEventListener('click', () =>
-    fieldsEl.querySelectorAll('.fd-chk').forEach((c) => (c.checked = false)),
-  );
+  selAll.addEventListener('click', () => fieldsEl.querySelectorAll('.fd-chk').forEach((c) => (c.checked = true)));
+  selNone.addEventListener('click', () => fieldsEl.querySelectorAll('.fd-chk').forEach((c) => (c.checked = false)));
   selBasic.addEventListener('click', () =>
-    fieldsEl
-      .querySelectorAll('.fd-chk')
-      .forEach((c) => (c.checked = BASIC.includes(c.dataset.key))),
+    fieldsEl.querySelectorAll('.fd-chk').forEach((c) => (c.checked = BASIC.includes(c.dataset.key))),
   );
 
-  let lastData = '',
-    lastExt = 'json';
+  let lastData = '';
+  let lastExt = 'json';
 
-  genBtn.addEventListener('click', () => {
+  const generateData = () => {
     const keys = getSelected();
     if (!keys.length) {
       window.showToast('Chọn ít nhất một trường', 'error');
       return;
     }
-    const rows = Math.min(Math.max(1, parseInt(rowsInput.value) || 5), 200);
+    const rows = Math.min(Math.max(1, parseInt(rowsInput.value, 10) || 5), 200);
     const fieldMap = Object.fromEntries(FIELDS.map((f) => [f.key, f]));
     const data = Array.from({ length: rows }, () =>
       Object.fromEntries(keys.map((k) => [fieldMap[k].label, fieldMap[k].fn()])),
@@ -171,29 +157,34 @@ export function init() {
       tableWrap.style.display = 'none';
     } else if (fmt === 'csv') {
       const header = keys.map((k) => fieldMap[k].label).join(',');
-      const rows2 = data.map((r) =>
+      const csvRows = data.map((r) =>
         Object.values(r)
           .map((v) => `"${String(v).replace(/"/g, '""')}"`)
           .join(','),
       );
-      lastData = [header, ...rows2].join('\n');
+      lastData = [header, ...csvRows].join('\n');
       lastExt = 'csv';
       pre.textContent = lastData;
       outputBox.style.display = '';
       tableWrap.style.display = 'none';
+    } else if (fmt === 'sql') {
+      const cols = keys.join(', ');
+      const sqlRows = data.map((r) => {
+        const vals = keys.map((k) => `'${String(r[fieldMap[k].label]).replace(/'/g, "''")}'`).join(', ');
+        return `INSERT INTO mock_data (${cols}) VALUES (${vals});`;
+      });
+      lastData = sqlRows.join('\n');
+      lastExt = 'sql';
+      pre.textContent = lastData;
+      outputBox.style.display = '';
+      tableWrap.style.display = 'none';
     } else {
-      // table
       const cols = keys.map((k) => fieldMap[k].label);
       tableWrap.innerHTML = `
         <table>
           <thead><tr>${cols.map((c) => `<th>${escHtml(c)}</th>`).join('')}</tr></thead>
           <tbody>${data
-            .map(
-              (r) =>
-                `<tr>${Object.values(r)
-                  .map((v) => `<td>${escHtml(String(v))}</td>`)
-                  .join('')}</tr>`,
-            )
+            .map((r) => `<tr>${Object.values(r).map((v) => `<td>${escHtml(v)}</td>`).join('')}</tr>`)
             .join('')}</tbody>
         </table>`;
       tableWrap.style.display = '';
@@ -204,7 +195,10 @@ export function init() {
 
     resultLabel.textContent = `${rows} dòng × ${keys.length} trường`;
     resultCard.style.display = '';
-  });
+  };
+
+  genBtn.addEventListener('click', generateData);
+  formatSel.addEventListener('change', generateData);
 
   clearBtn.addEventListener('click', () => {
     pre.textContent = '';
@@ -214,13 +208,15 @@ export function init() {
 
   copyBtn.addEventListener('click', () => window.copyToClipboard(lastData, copyBtn));
   dlBtn.addEventListener('click', () => {
+    if (!lastData) return;
     const blob = new Blob([lastData], { type: 'text/plain' });
+    const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
-    a.href = URL.createObjectURL(blob);
+    a.href = url;
     a.download = `fake-data.${lastExt}`;
     a.click();
-    URL.revokeObjectURL(a.href);
+    URL.revokeObjectURL(url);
   });
-}
 
-const escHtml = (s) => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+  generateData();
+}

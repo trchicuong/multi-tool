@@ -233,12 +233,16 @@ export function init() {
     return `<span class="badge ${cls}">${label}</span>`;
   };
 
+  let activeAbort = null;
+
   const lookup = async (ip) => {
+    activeAbort?.abort();
+    activeAbort = new AbortController();
     showLoading(true);
     let data = null;
     for (const api of APIS) {
       try {
-        const res = await fetch(api.url(ip), { cache: 'no-store' });
+        const res = await fetch(api.url(ip), { cache: 'no-store', signal: activeAbort.signal });
         if (!res.ok) continue;
         const json = await res.json();
         // Map first, then validate — each API uses different field names
@@ -246,10 +250,12 @@ export function init() {
         if (!mapped.ip) continue;
         data = mapped;
         break;
-      } catch {
-        /* try next */
+      } catch (e) {
+        if (e.name === 'AbortError') return;
       }
     }
+
+    if (activeAbort.signal.aborted) return;
 
     if (!data) {
       showError('Không thể lấy thông tin IP. Vui lòng thử lại sau.');
@@ -300,9 +306,11 @@ export function init() {
   });
 
   ipInput.addEventListener('keydown', (e) => {
-    if (e.key === 'Enter') lookupBtn.click();
+    if (e.key === 'Enter' && !e.isComposing) lookupBtn.click();
   });
 
   // Auto-load own IP on open
   lookup('');
+
+  return () => activeAbort?.abort();
 }

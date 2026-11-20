@@ -1,5 +1,5 @@
 /**
- * File Uploader / Inspector — client-side file metadata, base64, object URL
+ * File Inspector — Metadata, SHA-256 Checksum, Magic Bytes (Hex/ASCII), Base64 & Object URL
  */
 
 const formatSize = (bytes) => {
@@ -9,34 +9,49 @@ const formatSize = (bytes) => {
   return `${(bytes / 1073741824).toFixed(2)} GB`;
 };
 
+const escHtml = (s) => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+
+function formatMagicBytes(uint8) {
+  const slice = uint8.subarray(0, 16);
+  const hex = Array.from(slice, (b) => b.toString(16).padStart(2, '0').toUpperCase()).join(' ');
+  const ascii = Array.from(slice, (b) => (b >= 32 && b <= 126 ? String.fromCharCode(b) : '.')).join('');
+  return `${hex}  |  ${ascii}`;
+}
+
 export function getHtml() {
   return `
     <div class="tool-header">
       <h1>File Inspector</h1>
-      <p>Xem thông tin file, tạo Data URL / Object URL và sao chép Base64 — hoàn toàn trên trình duyệt.</p>
+      <p>Kiểm tra metadata, tính SHA-256 Checksum, xem 16 Magic Bytes đầu và trích xuất Base64 ngay trên trình duyệt.</p>
     </div>
 
-    <!-- Drop zone -->
     <div class="card">
       <div class="drop-zone" id="fuDropZone">
         <input type="file" id="fuFileInput" style="display:none;" multiple />
         <div class="drop-zone-text">
-          <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4"
-            style="display:block; margin:0 auto 10px; opacity:.5;">
+          <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="display:block; margin:0 auto 8px; opacity:.55;">
             <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
             <polyline points="17 8 12 3 7 8"/>
             <line x1="12" y1="3" x2="12" y2="15"/>
           </svg>
-          <strong>Chọn file</strong> hoặc kéo thả vào đây<br>
-          <span class="text-sm text-muted">Hỗ trợ mọi loại file — không upload lên server</span>
+          <strong>Chọn file</strong> hoặc kéo thả vào đây (hỗ trợ nhiều file cùng lúc)
         </div>
       </div>
     </div>
 
-    <!-- Results -->
     <div id="fuResults" style="display:none;">
-      <div id="fuFileList" class="mt-2" style="display:flex; flex-direction:column; gap:12px;"></div>
+      <div class="d-flex align-center justify-between mb-1">
+        <span class="field-label" style="margin:0;">Danh sách File đã phân tích</span>
+        <button type="button" class="btn btn-ghost btn-sm" id="fuClearList">Xóa danh sách</button>
+      </div>
+      <div id="fuFileList" style="display:flex; flex-direction:column; gap:12px;"></div>
     </div>
+
+    <style>
+      .fu-meta-box { background:var(--surface-2); border:1px solid var(--border); border-radius:var(--radius); padding:8px 10px; }
+      .fu-meta-label { font-size:11px; font-weight:600; text-transform:uppercase; letter-spacing:.05em; color:var(--text-3); margin-bottom:2px; }
+      .fu-meta-val { font-size:12.5px; word-break:break-all; font-family:var(--font-mono); }
+    </style>
   `;
 }
 
@@ -45,93 +60,117 @@ export function init() {
   const fileInput = document.getElementById('fuFileInput');
   const results = document.getElementById('fuResults');
   const fileList = document.getElementById('fuFileList');
+  const clearListBtn = document.getElementById('fuClearList');
 
   const processFiles = (files) => {
     results.style.display = '';
-    [...files].forEach((file) => {
+    [...files].forEach(async (file) => {
       const card = document.createElement('div');
       card.className = 'card';
-
       const isImage = file.type.startsWith('image/');
-      const previewId = `fu-img-${Date.now()}-${Math.random().toString(36).slice(2)}`;
-      const b64Id = `fu-b64-${Date.now()}-${Math.random().toString(36).slice(2)}`;
 
       card.innerHTML = `
-        <div class="d-flex align-center gap-2 mb-2" style="flex-wrap:wrap;">
-          <strong style="font-size:15px; word-break:break-all;">${file.name}</strong>
-          <span class="badge badge-blue" style="font-size:11px;">${file.type || 'unknown'}</span>
-        </div>
-        <div style="display:grid; grid-template-columns:repeat(auto-fill,minmax(180px,1fr)); gap:8px; margin-bottom:12px;">
-          <div class="ts-box"><div class="ts-box-label">Kích thước</div><div class="ts-box-val">${formatSize(file.size)}</div></div>
-          <div class="ts-box"><div class="ts-box-label">Bytes</div><div class="ts-box-val">${file.size.toLocaleString()}</div></div>
-          <div class="ts-box"><div class="ts-box-label">Sửa lần cuối</div><div class="ts-box-val">${new Date(file.lastModified).toLocaleString()}</div></div>
-          <div class="ts-box"><div class="ts-box-label">MIME Type</div><div class="ts-box-val mono">${file.type || '—'}</div></div>
-        </div>
-        ${isImage ? `<div id="${previewId}" class="mb-2" style="text-align:center;"></div>` : ''}
-        <div class="d-flex gap-2 flex-wrap">
-          <button class="btn btn-primary btn-sm fu-b64-btn">Load Base64</button>
-          <button class="btn btn-secondary btn-sm fu-objurl-btn">Object URL</button>
-          <button class="btn btn-ghost btn-sm fu-dl-btn">Download</button>
-        </div>
-        <div id="${b64Id}" style="display:none; margin-top:10px;">
-          <div class="d-flex align-center gap-1 mb-1" style="justify-content:space-between;">
-            <span class="field-label" style="margin:0;">Base64 Data URL</span>
-            <button class="copy-btn fu-copy-b64" style="position:static;">Copy</button>
+        <div class="card-header">
+          <div class="d-flex align-center gap-2 flex-wrap">
+            <strong style="font-size:14.5px; word-break:break-all;">${escHtml(file.name)}</strong>
+            <span class="badge badge-blue">${escHtml(file.type || 'unknown')}</span>
           </div>
-          <textarea class="mono w-full fu-b64-output" rows="4" readonly
-            style="font-size:11px; resize:vertical; background:var(--surface-2);"></textarea>
+          <div class="d-flex gap-1">
+            <button type="button" class="btn btn-secondary btn-sm fu-b64-btn">Load Base64</button>
+            <button type="button" class="btn btn-ghost btn-sm fu-objurl-btn">Mở tab mới</button>
+          </div>
         </div>
-        <style>.ts-box{background:var(--surface-2);border:1px solid var(--border);border-radius:var(--radius);padding:8px 10px}.ts-box-label{font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.05em;color:var(--text-3);margin-bottom:2px}.ts-box-val{font-size:13px;word-break:break-all;font-family:var(--font-mono,monospace)}</style>
+
+        <div style="display:grid; grid-template-columns:repeat(auto-fill, minmax(185px,1fr)); gap:8px; margin-bottom:10px;">
+          <div class="fu-meta-box"><div class="fu-meta-label">Kích thước</div><div class="fu-meta-val">${formatSize(file.size)} (${file.size.toLocaleString()} B)</div></div>
+          <div class="fu-meta-box"><div class="fu-meta-label">Sửa lần cuối</div><div class="fu-meta-val">${new Date(file.lastModified).toLocaleString()}</div></div>
+          <div class="fu-meta-box"><div class="fu-meta-label">MIME Type</div><div class="fu-meta-val">${escHtml(file.type || '—')}</div></div>
+        </div>
+
+        <div class="fu-meta-box mb-1">
+          <div class="d-flex align-center justify-between gap-2">
+            <div style="min-width:0; flex:1;">
+              <div class="fu-meta-label">SHA-256 Checksum</div>
+              <div class="fu-meta-val fu-sha256">Đang tính...</div>
+            </div>
+            <button type="button" class="copy-btn fu-copy-sha">Copy</button>
+          </div>
+        </div>
+
+        <div class="fu-meta-box mb-1">
+          <div class="fu-meta-label">Magic Bytes (16 byte đầu: Hex | ASCII)</div>
+          <div class="fu-meta-val fu-magic">Đang đọc...</div>
+        </div>
+
+        ${isImage ? `<div class="fu-img-preview mt-2" style="text-align:center;"></div>` : ''}
+
+        <div class="fu-b64-wrap mt-2" style="display:none;">
+          <div class="card-header" style="margin-bottom:6px;">
+            <span class="field-label">Base64 Data URL</span>
+            <button type="button" class="copy-btn fu-copy-b64">Copy</button>
+          </div>
+          <textarea class="mono w-full fu-b64-output" rows="4" readonly style="font-size:11.5px; resize:vertical; background:var(--code-bg);"></textarea>
+        </div>
       `;
 
       fileList.prepend(card);
 
-      const b64Wrap = card.querySelector(`#${b64Id}`);
+      const shaEl = card.querySelector('.fu-sha256');
+      const magicEl = card.querySelector('.fu-magic');
+      const copyShaBtn = card.querySelector('.fu-copy-sha');
+      const b64Wrap = card.querySelector('.fu-b64-wrap');
       const b64Output = card.querySelector('.fu-b64-output');
       const b64Btn = card.querySelector('.fu-b64-btn');
       const objBtn = card.querySelector('.fu-objurl-btn');
-      const dlBtn = card.querySelector('.fu-dl-btn');
       const copyB64Btn = card.querySelector('.fu-copy-b64');
-      const previewEl = isImage ? card.querySelector(`#${previewId}`) : null;
+      const previewEl = card.querySelector('.fu-img-preview');
+
+      // Read magic bytes & SHA-256
+      try {
+        const headBuf = await file.slice(0, 16).arrayBuffer();
+        magicEl.textContent = formatMagicBytes(new Uint8Array(headBuf));
+
+        if (file.size <= 100 * 1024 * 1024) {
+          const fullBuf = await file.arrayBuffer();
+          const digest = await crypto.subtle.digest('SHA-256', fullBuf);
+          const hex = Array.from(new Uint8Array(digest), (b) => b.toString(16).padStart(2, '0')).join('');
+          shaEl.textContent = hex;
+          copyShaBtn.addEventListener('click', () => window.copyToClipboard(hex, copyShaBtn));
+        } else {
+          shaEl.textContent = 'File > 100MB (bỏ qua băm tự động)';
+        }
+      } catch {
+        shaEl.textContent = 'Không thể đọc buffer file';
+      }
 
       b64Btn.addEventListener('click', () => {
         const reader = new FileReader();
         reader.onload = (e) => {
-          const dataUrl = e.target.result;
+          const dataUrl = String(e.target.result || '');
           b64Output.value = dataUrl;
           b64Wrap.style.display = '';
           b64Btn.textContent = 'Loaded';
           if (isImage && previewEl) {
-            previewEl.innerHTML = `<img src="${dataUrl}" style="max-width:100%; max-height:240px; border-radius:var(--radius); border:1px solid var(--border);" />`;
+            previewEl.innerHTML = `<img src="${dataUrl}" alt="Preview" style="max-width:100%; max-height:240px; border-radius:var(--radius); border:1px solid var(--border);" />`;
           }
         };
         reader.readAsDataURL(file);
       });
 
-      copyB64Btn.addEventListener('click', () => {
-        window.copyToClipboard(b64Output.value, copyB64Btn);
-      });
+      copyB64Btn.addEventListener('click', () => window.copyToClipboard(b64Output.value, copyB64Btn));
 
       objBtn.addEventListener('click', () => {
         const url = URL.createObjectURL(file);
-        const a = document.createElement('a');
-        a.href = url;
-        a.target = '_blank';
-        a.rel = 'noopener';
-        a.click();
+        window.open(url, '_blank', 'noopener');
         setTimeout(() => URL.revokeObjectURL(url), 10000);
-      });
-
-      dlBtn.addEventListener('click', () => {
-        const url = URL.createObjectURL(file);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = file.name;
-        a.click();
-        setTimeout(() => URL.revokeObjectURL(url), 5000);
       });
     });
   };
+
+  clearListBtn.addEventListener('click', () => {
+    fileList.innerHTML = '';
+    results.style.display = 'none';
+  });
 
   dropZone.addEventListener('click', () => fileInput.click());
   fileInput.addEventListener('change', () => {

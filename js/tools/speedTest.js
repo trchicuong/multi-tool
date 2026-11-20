@@ -186,6 +186,8 @@ export function init() {
   const stPingVal = document.getElementById('stPingVal');
   const stJitterVal = document.getElementById('stJitterVal');
 
+  let activeAbort = new AbortController();
+
   const setLog = (msg) => {
     stLog.textContent = msg;
   };
@@ -200,24 +202,25 @@ export function init() {
   };
 
   // ── Ping + Jitter ─────────────────────────────────────────────────────
-  const measurePing = async () => {
+  const measurePing = async (signal) => {
     // bytes=1 → minimal payload, measures pure network RTT not transfer time
     const url = 'https://speed.cloudflare.com/__down?bytes=1';
     // Warm-up: establish TCP/TLS connection before measuring
     try {
-      await fetch(`${url}&r=w`, { cache: 'no-store' });
-    } catch {
-      /* ignore */
+      await fetch(`${url}&r=w`, { cache: 'no-store', signal });
+    } catch (e) {
+      if (e.name === 'AbortError') throw e;
     }
 
     const samples = [];
     for (let i = 0; i < 10; i++) {
+      if (signal.aborted) break;
       try {
         const t0 = performance.now();
-        await fetch(`${url}&r=${Math.random()}`, { cache: 'no-store' });
+        await fetch(`${url}&r=${Math.random()}`, { cache: 'no-store', signal });
         samples.push(performance.now() - t0);
-      } catch {
-        /* ignore */
+      } catch (e) {
+        if (e.name === 'AbortError') throw e;
       }
     }
     if (samples.length < 2) return { ping: null, jitter: null };
@@ -234,25 +237,20 @@ export function init() {
   };
 
   // ── Download ──────────────────────────────────────────────────────────
-  const measureDownload = async (onProgress) => {
-    // Warm-up: pre-heat TCP/TLS so the first measured round isn't penalised
-    // by handshake overhead (real sites always do a warm-up phase).
+  const measureDownload = async (onProgress, signal) => {
     try {
-      await fetch(`https://speed.cloudflare.com/__down?bytes=200000&r=w`, { cache: 'no-store' });
-    } catch {
-      /* ignore */
+      await fetch(`https://speed.cloudflare.com/__down?bytes=200000&r=w`, { cache: 'no-store', signal });
+    } catch (e) {
+      if (e.name === 'AbortError') throw e;
     }
 
-    // PARALLEL concurrent streams per round — this is the key fix.
-    // A single TCP stream is throttled by TCP slow-start and congestion window.
-    // fast.com / Cloudflare Speed Test use 4–8 parallel streams to saturate
-    // the actual available bandwidth.
     const PARALLEL = 4;
-    const rounds = [1_000_000, 5_000_000]; // bytes per stream
+    const rounds = [1_000_000, 5_000_000];
 
     let totalBytes = 0,
       totalMs = 0;
     for (const size of rounds) {
+      if (signal.aborted) break;
       try {
         const urls = Array.from(
           { length: PARALLEL },
@@ -260,32 +258,28 @@ export function init() {
         );
         const t0 = performance.now();
         await Promise.all(
-          urls.map((u) => fetch(u, { cache: 'no-store' }).then((r) => r.arrayBuffer())),
+          urls.map((u) => fetch(u, { cache: 'no-store', signal }).then((r) => r.arrayBuffer())),
         );
         const ms = performance.now() - t0;
         totalBytes += size * PARALLEL;
         totalMs += ms;
         onProgress((totalBytes * 8) / (totalMs / 1000) / 1_000_000);
-      } catch {
-        /* ignore */
+      } catch (e) {
+        if (e.name === 'AbortError') throw e;
       }
     }
     return totalMs ? (totalBytes * 8) / (totalMs / 1000) / 1_000_000 : null;
   };
 
   // ── Upload ────────────────────────────────────────────────────────────
-  const measureUpload = async (onProgress) => {
-    // PARALLEL streams (same reason as download).
-    // Each buffer is fully random — the original code only randomised the
-    // first 4 KB, leaving the rest as 0x00. HTTP/2 compresses zeros very
-    // efficiently, so the wire payload was much smaller than reported,
-    // making upload look faster than reality.
+  const measureUpload = async (onProgress, signal) => {
     const PARALLEL = 3;
-    const rounds = [256_000, 1_000_000, 4_000_000]; // bytes per stream
+    const rounds = [256_000, 1_000_000, 4_000_000];
 
     let totalBytes = 0,
       totalMs = 0;
     for (const size of rounds) {
+      if (signal.aborted) break;
       try {
         const blobs = Array.from(
           { length: PARALLEL },
@@ -294,15 +288,15 @@ export function init() {
         const t0 = performance.now();
         await Promise.all(
           blobs.map((body) =>
-            fetch('https://speed.cloudflare.com/__up', { method: 'POST', body, cache: 'no-store' }),
+            fetch('https://speed.cloudflare.com/__up', { method: 'POST', body, cache: 'no-store', signal }),
           ),
         );
         const ms = performance.now() - t0;
         totalBytes += size * PARALLEL;
         totalMs += ms;
         onProgress((totalBytes * 8) / (totalMs / 1000) / 1_000_000);
-      } catch {
-        /* ignore */
+      } catch (e) {
+        if (e.name === 'AbortError') throw e;
       }
     }
     return totalMs ? (totalBytes * 8) / (totalMs / 1000) / 1_000_000 : null;
@@ -310,9 +304,12 @@ export function init() {
 
   // ── Run ───────────────────────────────────────────────────────────────
   const run = async () => {
+    activeAbort.abort();
+    activeAbort = new AbortController();
+    const { signal } = activeAbort;
+
     runBtn.disabled = true;
     runBtn.classList.add('testing');
-    // three dots icon while running
     runIcon.setAttribute('viewBox', '0 0 24 24');
     runIcon.innerHTML =
       '<circle cx="4" cy="12" r="2" fill="currentColor"/><circle cx="12" cy="12" r="2" fill="currentColor"/><circle cx="20" cy="12" r="2" fill="currentColor"/>';
@@ -321,37 +318,38 @@ export function init() {
     stPingVal.textContent = '--';
     stJitterVal.textContent = '--';
 
-    // Ping
-    setLog('Đo Latency...');
-    const { ping, jitter } = await measurePing();
-    stPingVal.textContent = ping ?? '--';
-    stJitterVal.textContent = jitter ?? '--';
-    setLog(`Latency: ${ping ?? '?'} ms · Jitter: ${jitter ?? '?'} ms · Đo Download...`);
+    try {
+      setLog('Đo Latency...');
+      const { ping, jitter } = await measurePing(signal);
+      stPingVal.textContent = ping ?? '--';
+      stJitterVal.textContent = jitter ?? '--';
+      setLog(`Latency: ${ping ?? '?'} ms · Jitter: ${jitter ?? '?'} ms · Đo Download...`);
 
-    // Download
-    const dl = await measureDownload((mbps) => {
-      stDlVal.textContent = mbps.toFixed(1);
-      setLog(`Download: ${mbps.toFixed(1)} Mbps (đang đo...)`);
-    });
-    const dlFinal = dl !== null ? +dl.toFixed(2) : null;
-    stDlVal.textContent = dlFinal ?? '--';
-    setLog(`Download: ${dlFinal ?? '?'} Mbps · Đo Upload...`);
+      const dl = await measureDownload((mbps) => {
+        stDlVal.textContent = mbps.toFixed(1);
+        setLog(`Download: ${mbps.toFixed(1)} Mbps (đang đo...)`);
+      }, signal);
+      const dlFinal = dl !== null ? +dl.toFixed(2) : null;
+      stDlVal.textContent = dlFinal ?? '--';
+      setLog(`Download: ${dlFinal ?? '?'} Mbps · Đo Upload...`);
 
-    // Upload
-    const ul = await measureUpload((mbps) => {
-      stUlVal.textContent = mbps.toFixed(1);
-      setLog(`Upload: ${mbps.toFixed(1)} Mbps (đang đo...)`);
-    });
-    const ulFinal = ul !== null ? +ul.toFixed(2) : null;
-    stUlVal.textContent = ulFinal ?? '--';
-
-    // Done — restore play icon
-    runBtn.disabled = false;
-    runBtn.classList.remove('testing');
-    runIcon.setAttribute('viewBox', '0 0 24 24');
-    runIcon.innerHTML = '<path d="M8 5.14v14l11-7-11-7z" fill="currentColor"/>';
-    setLog('');
+      const ul = await measureUpload((mbps) => {
+        stUlVal.textContent = mbps.toFixed(1);
+        setLog(`Upload: ${mbps.toFixed(1)} Mbps (đang đo...)`);
+      }, signal);
+      const ulFinal = ul !== null ? +ul.toFixed(2) : null;
+      stUlVal.textContent = ulFinal ?? '--';
+      setLog('');
+    } catch (e) {
+      if (e.name !== 'AbortError') setLog('Không thể đo tốc độ mạng.');
+    } finally {
+      runBtn.disabled = false;
+      runBtn.classList.remove('testing');
+      runIcon.setAttribute('viewBox', '0 0 24 24');
+      runIcon.innerHTML = '<path d="M8 5.14v14l11-7-11-7z" fill="currentColor"/>';
+    }
   };
 
   runBtn.addEventListener('click', run);
+  return () => activeAbort.abort();
 }

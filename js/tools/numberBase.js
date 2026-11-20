@@ -1,67 +1,105 @@
 /**
- * Number Base Converter — decimal, binary, octal, hex
+ * Number Base Converter — BigInt precision (supports 64-bit / 128-bit+), copy buttons & bit grid
  */
 
+function parseBigIntBase(str, base) {
+  let clean = str.trim().replace(/[\s_]/g, '').toLowerCase();
+  if (!clean) return null;
+  let neg = false;
+  if (clean.startsWith('-')) {
+    neg = true;
+    clean = clean.slice(1);
+  } else if (clean.startsWith('+')) {
+    clean = clean.slice(1);
+  }
+  if (!clean) throw new Error('Chuỗi số trống');
+
+  const digits = '0123456789abcdefghijklmnopqrstuvwxyz';
+  const validChars = digits.slice(0, base);
+  for (const ch of clean) {
+    if (!validChars.includes(ch)) {
+      throw new Error(`Ký tự "${ch.toUpperCase()}" không hợp lệ ở cơ số ${base}`);
+    }
+  }
+
+  let acc = 0n;
+  const b = BigInt(base);
+  for (const ch of clean) {
+    acc = acc * b + BigInt(digits.indexOf(ch));
+  }
+  return neg ? -acc : acc;
+}
+
 export function getHtml() {
+  const fields = [
+    { id: 'nbDec', label: 'Decimal (Base 10)', placeholder: '255' },
+    { id: 'nbBin', label: 'Binary (Base 2)', placeholder: '11111111' },
+    { id: 'nbOct', label: 'Octal (Base 8)', placeholder: '377' },
+    { id: 'nbHex', label: 'Hexadecimal (Base 16)', placeholder: 'FF' },
+  ];
+
   return `
     <div class="tool-header">
       <h1>Number Base Converter</h1>
-      <p>Chuyển đổi số giữa các hệ cơ số: Decimal, Binary, Octal, Hexadecimal.</p>
+      <p>Chuyển đổi số nguyên chính xác (hỗ trợ số lớn BigInt 64/128-bit) giữa các hệ cơ số 2–36.</p>
     </div>
 
     <div class="card">
-      <div class="row">
-        <div class="flex-1">
-          <label class="field-label">Decimal (Base 10)</label>
-          <input type="text" id="nbDec" class="mono" placeholder="255" autocomplete="off" spellcheck="false" />
-        </div>
-        <div class="flex-1">
-          <label class="field-label">Binary (Base 2)</label>
-          <input type="text" id="nbBin" class="mono" placeholder="11111111" autocomplete="off" spellcheck="false" />
-        </div>
+      <div class="card-header">
+        <span class="field-label">Các hệ cơ số phổ biến</span>
+        <button type="button" class="btn btn-ghost btn-sm" id="nbClear">Xóa tất cả</button>
       </div>
-      <div class="row mt-2">
-        <div class="flex-1">
-          <label class="field-label">Octal (Base 8)</label>
-          <input type="text" id="nbOct" class="mono" placeholder="377" autocomplete="off" spellcheck="false" />
-        </div>
-        <div class="flex-1">
-          <label class="field-label">Hexadecimal (Base 16)</label>
-          <input type="text" id="nbHex" class="mono" placeholder="FF" autocomplete="off" spellcheck="false" />
-        </div>
+
+      <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(280px, 1fr)); gap:14px;">
+        ${fields
+          .map(
+            (f) => `
+          <div>
+            <label class="field-label" for="${f.id}">${f.label}</label>
+            <div class="d-flex align-center gap-1">
+              <input type="text" id="${f.id}" class="mono flex-1" placeholder="${f.placeholder}" autocomplete="off" spellcheck="false" />
+              <button type="button" class="copy-btn nb-copy" data-target="${f.id}" style="min-height:38px;">Copy</button>
+            </div>
+          </div>
+        `,
+          )
+          .join('')}
       </div>
       <div id="nbError" class="text-sm text-danger mt-1" style="min-height:16px;"></div>
-      <div class="btn-group">
-        <button class="btn btn-ghost btn-sm" id="nbClear">Xóa tất cả</button>
-      </div>
     </div>
 
     <!-- Bit visualization -->
-    <div class="card mt-2" id="nbBitCard" style="display:none;">
-      <div class="field-label">Bit Visualization</div>
-      <div id="nbBits" style="margin-top:8px; font-family:var(--font-mono); font-size:13px; display:flex; flex-wrap:wrap; gap:4px;"></div>
+    <div class="card" id="nbBitCard" style="display:none;">
+      <div class="card-header">
+        <span class="field-label">Bit Visualization (8-bit groups)</span>
+        <span id="nbBitWidth" class="badge badge-blue"></span>
+      </div>
+      <div id="nbBits" style="font-family:var(--font-mono); font-size:12.5px; display:flex; flex-wrap:wrap; gap:6px;"></div>
     </div>
 
     <!-- Custom base -->
-    <div class="card mt-2">
-      <div class="field-label">Custom Base</div>
-      <div class="row mt-1">
-        <div style="flex:0 0 80px;">
-          <label class="field-label">From Base</label>
+    <div class="card">
+      <div class="card-header">
+        <span class="field-label">Custom Base (Base 2 → Base 36)</span>
+      </div>
+      <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(150px, 1fr)); gap:12px; align-items:end;">
+        <div>
+          <label class="field-label" for="nbFromBase">From Base</label>
           <input type="number" id="nbFromBase" value="10" min="2" max="36" />
         </div>
-        <div style="flex:0 0 80px;">
-          <label class="field-label">To Base</label>
-          <input type="number" id="nbToBase" value="16" min="2" max="36" />
+        <div>
+          <label class="field-label" for="nbToBase">To Base</label>
+          <input type="number" id="nbToBase" value="36" min="2" max="36" />
         </div>
-        <div class="flex-1">
-          <label class="field-label">Input</label>
+        <div>
+          <label class="field-label" for="nbCustomIn">Input</label>
           <input type="text" id="nbCustomIn" class="mono" placeholder="255" spellcheck="false" />
         </div>
-        <div class="flex-1" style="position:relative;">
-          <label class="field-label">Output</label>
-          <div class="output-box" style="margin-top:0;">
-            <pre id="nbCustomOut" style="margin:0; padding:8px 12px; min-height:38px;"></pre>
+        <div>
+          <label class="field-label" for="nbCustomOut">Output</label>
+          <div class="d-flex align-center gap-1">
+            <input type="text" id="nbCustomOut" class="mono flex-1" readonly placeholder="73" style="background:var(--code-bg);" />
+            <button type="button" class="copy-btn" id="nbCustomCopy" style="min-height:38px;">Copy</button>
           </div>
         </div>
       </div>
@@ -77,6 +115,7 @@ export function init() {
   const hex = document.getElementById('nbHex');
   const errEl = document.getElementById('nbError');
   const bitCard = document.getElementById('nbBitCard');
+  const bitWidthEl = document.getElementById('nbBitWidth');
   const bitsEl = document.getElementById('nbBits');
   const clearBtn = document.getElementById('nbClear');
 
@@ -85,36 +124,52 @@ export function init() {
   const customIn = document.getElementById('nbCustomIn');
   const customOut = document.getElementById('nbCustomOut');
   const customErr = document.getElementById('nbCustomError');
+  const customCopy = document.getElementById('nbCustomCopy');
 
   const updateBits = (n) => {
-    if (isNaN(n) || n < 0) {
+    if (n === null || n < 0n) {
       bitCard.style.display = 'none';
       return;
     }
-    const bits = n.toString(2).padStart(Math.max(8, Math.ceil(n.toString(2).length / 8) * 8), '0');
-    const chunks = bits.match(/.{1,8}/g) || [];
+    const rawBin = n.toString(2);
+    if (rawBin.length > 128) {
+      bitWidthEl.textContent = `${rawBin.length} bits`;
+      bitsEl.innerHTML = `<span class="text-sm text-muted">Số quá lớn (${rawBin.length} bits) — thu gọn hiển thị bit.</span>`;
+      bitCard.style.display = '';
+      return;
+    }
+
+    const paddedLen = Math.max(8, Math.ceil(rawBin.length / 8) * 8);
+    const padded = rawBin.padStart(paddedLen, '0');
+    const chunks = padded.match(/.{1,8}/g) || [];
+    bitWidthEl.textContent = `${paddedLen} bits`;
     bitsEl.innerHTML = chunks
-      .map((chunk, i) => {
-        const byte = parseInt(chunk, 2);
-        const bits = chunk
+      .map((chunk, ci) => {
+        const byteOffset = (chunks.length - 1 - ci) * 8;
+        const cells = chunk
           .split('')
           .map(
-            (b, bi) =>
-              `<span style="display:inline-block;width:22px;height:22px;line-height:22px;text-align:center;border-radius:3px;margin:1px;background:${b === '1' ? 'var(--accent)' : 'var(--surface-2)'};color:${b === '1' ? '#fff' : 'var(--text-3)'};font-size:12px;">${b}</span>`,
+            (b) =>
+              `<span style="display:inline-flex;align-items:center;justify-content:center;width:22px;height:22px;border-radius:3px;background:${b === '1' ? 'var(--accent)' : 'var(--surface-2)'};color:${b === '1' ? '#fff' : 'var(--text-3)'};font-size:12px;">${b}</span>`,
           )
           .join('');
-        return `<div style="display:inline-flex;gap:1px;border:1px solid var(--border);border-radius:4px;padding:3px;margin:2px;">${bits}</div>`;
+        return `<div style="display:inline-flex;flex-direction:column;align-items:center;gap:3px;border:1px solid var(--border);border-radius:var(--radius);padding:4px;background:var(--surface);">
+          <div style="display:flex;gap:2px;">${cells}</div>
+          <span class="text-muted" style="font-size:10px;">bit ${byteOffset + 7}..${byteOffset}</span>
+        </div>`;
       })
       .join('');
     bitCard.style.display = '';
   };
 
+  const clearAll = () => {
+    dec.value = bin.value = oct.value = hex.value = '';
+    errEl.textContent = '';
+    bitCard.style.display = 'none';
+  };
+
   const setAll = (n, source) => {
     errEl.textContent = '';
-    if (isNaN(n) || !isFinite(n)) {
-      errEl.textContent = 'Giá trị không hợp lệ';
-      return;
-    }
     if (source !== dec) dec.value = n.toString(10);
     if (source !== bin) bin.value = n.toString(2);
     if (source !== oct) oct.value = n.toString(8);
@@ -122,98 +177,64 @@ export function init() {
     updateBits(n);
   };
 
-  dec.addEventListener('input', () => {
-    const v = parseInt(dec.value.trim(), 10);
-    if (dec.value.trim() === '') {
-      bin.value = oct.value = hex.value = '';
-      bitCard.style.display = 'none';
-      errEl.textContent = '';
-      return;
-    }
-    setAll(v, dec);
+  const bindBase = (el, base) => {
+    el.addEventListener('input', () => {
+      const val = el.value.trim();
+      if (!val) {
+        clearAll();
+        return;
+      }
+      try {
+        const n = parseBigIntBase(val, base);
+        setAll(n, el);
+      } catch (e) {
+        errEl.textContent = e.message;
+      }
+    });
+  };
+
+  bindBase(dec, 10);
+  bindBase(bin, 2);
+  bindBase(oct, 8);
+  bindBase(hex, 16);
+
+  document.querySelectorAll('.nb-copy').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      const target = document.getElementById(btn.dataset.target);
+      if (target?.value) window.copyToClipboard(target.value, btn);
+    });
   });
 
-  bin.addEventListener('input', () => {
-    const v = parseInt(bin.value.trim(), 2);
-    if (bin.value.trim() === '') {
-      dec.value = oct.value = hex.value = '';
-      bitCard.style.display = 'none';
-      errEl.textContent = '';
-      return;
-    }
-    if (/[^01]/.test(bin.value.trim())) {
-      errEl.textContent = 'Binary chỉ chứa 0 và 1';
-      return;
-    }
-    setAll(v, bin);
-  });
+  clearBtn.addEventListener('click', clearAll);
 
-  oct.addEventListener('input', () => {
-    const v = parseInt(oct.value.trim(), 8);
-    if (oct.value.trim() === '') {
-      dec.value = bin.value = hex.value = '';
-      bitCard.style.display = 'none';
-      errEl.textContent = '';
-      return;
-    }
-    if (/[^0-7]/.test(oct.value.trim())) {
-      errEl.textContent = 'Octal chỉ chứa 0-7';
-      return;
-    }
-    setAll(v, oct);
-  });
-
-  hex.addEventListener('input', () => {
-    const v = parseInt(hex.value.trim(), 16);
-    if (hex.value.trim() === '') {
-      dec.value = bin.value = oct.value = '';
-      bitCard.style.display = 'none';
-      errEl.textContent = '';
-      return;
-    }
-    if (/[^0-9a-fA-F]/.test(hex.value.trim())) {
-      errEl.textContent = 'Hex chỉ chứa 0-9, A-F';
-      return;
-    }
-    setAll(v, hex);
-  });
-
-  clearBtn.addEventListener('click', () => {
-    dec.value = bin.value = oct.value = hex.value = '';
-    errEl.textContent = '';
-    bitCard.style.display = 'none';
-  });
-
-  // Custom base
   const runCustom = () => {
     customErr.textContent = '';
-    const inp = customIn.value.trim().toUpperCase();
-    const from = parseInt(fromBase.value);
-    const to = parseInt(toBase.value);
+    const inp = customIn.value.trim();
+    const from = Number(fromBase.value);
+    const to = Number(toBase.value);
     if (!inp) {
-      customOut.textContent = '';
+      customOut.value = '';
       return;
     }
-    if (isNaN(from) || from < 2 || from > 36) {
-      customErr.textContent = 'From base phải từ 2-36';
+    if (!Number.isInteger(from) || from < 2 || from > 36) {
+      customErr.textContent = 'From base phải từ 2 đến 36';
       return;
     }
-    if (isNaN(to) || to < 2 || to > 36) {
-      customErr.textContent = 'To base phải từ 2-36';
+    if (!Number.isInteger(to) || to < 2 || to > 36) {
+      customErr.textContent = 'To base phải từ 2 đến 36';
       return;
     }
     try {
-      const n = parseInt(inp, from);
-      if (isNaN(n)) {
-        customErr.textContent = `"${inp}" không hợp lệ ở base ${from}`;
-        customOut.textContent = '';
-        return;
-      }
-      customOut.textContent = n.toString(to).toUpperCase();
+      const n = parseBigIntBase(inp, from);
+      customOut.value = n.toString(to).toUpperCase();
     } catch (e) {
       customErr.textContent = e.message;
+      customOut.value = '';
     }
   };
 
   [customIn, fromBase, toBase].forEach((el) => el.addEventListener('input', runCustom));
+  customCopy.addEventListener('click', () => {
+    if (customOut.value) window.copyToClipboard(customOut.value, customCopy);
+  });
 }

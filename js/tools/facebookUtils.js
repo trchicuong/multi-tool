@@ -1,260 +1,333 @@
 /**
- * Facebook Utils — extract UID, parse share URLs, generate post links
+ * Facebook Utils — Extract UID, Parse & Clean Tracking URL, Share Generator & Open Graph Meta Builder
  */
+
+const escHtml = (s) => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+const escAttr = (s) => String(s).replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 
 export function getHtml() {
   return `
     <div class="tool-header">
       <h1>Facebook Utils</h1>
-      <p>Trích xuất Facebook UID, phân tích URL, tạo share link và kiểm tra Open Graph.</p>
+      <p>Trích xuất ID, làm sạch tham số tracking trên URL, tạo Share Link và sinh thẻ Meta Open Graph.</p>
     </div>
 
-    <!-- Tab navigation -->
-    <div class="d-flex gap-1 mb-2" style="flex-wrap:wrap;">
-      <button class="btn btn-secondary btn-sm fb-tab-btn active" data-tab="uid">Extract UID</button>
-      <button class="btn btn-secondary btn-sm fb-tab-btn" data-tab="parse">Parse URL</button>
-      <button class="btn btn-secondary btn-sm fb-tab-btn" data-tab="share">Share Generator</button>
-      <button class="btn btn-secondary btn-sm fb-tab-btn" data-tab="og">Open Graph</button>
+    <div class="seg-group mb-2" role="group" aria-label="Công cụ Facebook">
+      <button type="button" class="btn fb-tab-btn active" data-tab="uid">Extract UID</button>
+      <button type="button" class="btn fb-tab-btn" data-tab="parse">Parse &amp; Clean URL</button>
+      <button type="button" class="btn fb-tab-btn" data-tab="share">Share Generator</button>
+      <button type="button" class="btn fb-tab-btn" data-tab="og">Open Graph</button>
     </div>
 
     <!-- Tab: Extract UID -->
     <div class="fb-tab-panel card" id="fbTab-uid">
-      <div class="field">
-        <label class="field-label">Facebook Profile / Page URL</label>
-        <input type="url" id="fbUidInput" class="w-full"
-          placeholder="https://facebook.com/username hoặc https://www.facebook.com/profile.php?id=..." />
+      <div class="card-header">
+        <label class="field-label" for="fbUidInput">Facebook Profile / Page / Post / Reel URL</label>
+        <div class="d-flex gap-1">
+          <button type="button" class="btn btn-ghost btn-sm" id="fbUidSample">Sample</button>
+          <button type="button" class="btn btn-ghost btn-sm" id="fbUidClear">Xóa</button>
+        </div>
       </div>
-      <button class="btn btn-primary mt-1" id="fbUidExtract">Extract UID</button>
+      <div class="d-flex gap-2 align-center flex-wrap">
+        <input
+          type="url"
+          id="fbUidInput"
+          class="flex-1 mono"
+          style="min-width:220px;"
+          placeholder="https://www.facebook.com/profile.php?id=100012345678901"
+          spellcheck="false"
+        />
+        <button type="button" class="btn btn-primary" id="fbUidExtract">Extract ID</button>
+      </div>
       <div id="fbUidResult" class="mt-2" style="display:none;">
-        <div class="field-label">Kết quả</div>
-        <div id="fbUidOutput" style="display:flex; flex-direction:column; gap:8px; margin-top:6px;"></div>
+        <div class="field-label">Kết quả nhận diện</div>
+        <div id="fbUidOutput" style="display:flex; flex-direction:column; gap:8px;"></div>
       </div>
-      <div class="mt-2 output-box" style="font-size:13px;">
-        <strong>Hướng dẫn:</strong><br>
-        • URL dạng <code>?id=123456789</code> → UID trực tiếp trong URL<br>
-        • URL dạng <code>/username</code> → cần truy cập trang và xem source để lấy UID<br>
-        • Mẹo: tìm <code>"userID":"</code> hoặc <code>"pageID":"</code> trong HTML nguồn trang
+      <div class="output-box mt-2" style="padding:12px 14px; font-size:12.5px; color:var(--text-2);">
+        Hỗ trợ nhận diện tự động: <code>?id=...</code>, <code>?fbid=...</code>, <code>/people/.../ID</code>, <code>/groups/ID</code>, <code>/pages/.../ID</code>, <code>/posts/ID</code>, <code>/videos/ID</code>, <code>/reel/ID</code> và username.
       </div>
     </div>
 
-    <!-- Tab: Parse URL -->
+    <!-- Tab: Parse & Clean URL -->
     <div class="fb-tab-panel card" id="fbTab-parse" style="display:none;">
-      <div class="field">
-        <label class="field-label">Facebook URL</label>
-        <textarea id="fbParseInput" class="mono w-full" rows="3"
-          placeholder="https://www.facebook.com/groups/123/posts/456?__cft__[0]=..."
-          spellcheck="false"></textarea>
+      <div class="card-header">
+        <label class="field-label" for="fbParseInput">Facebook URL (có chứa tham số tracking)</label>
+        <div class="d-flex gap-1">
+          <button type="button" class="btn btn-ghost btn-sm" id="fbParseSample">Sample</button>
+          <button type="button" class="btn btn-ghost btn-sm" id="fbParseClear">Xóa</button>
+        </div>
       </div>
-      <button class="btn btn-primary" id="fbParseBtn">Phân tích</button>
+      <div class="field">
+        <textarea
+          id="fbParseInput"
+          class="mono w-full"
+          rows="3"
+          placeholder="https://www.facebook.com/groups/123456789/posts/987654321/?fbclid=IwAR...&__cft__[0]=..."
+          spellcheck="false"
+        ></textarea>
+      </div>
+      <button type="button" class="btn btn-primary" id="fbParseBtn">Phân tích &amp; Làm sạch URL</button>
+
       <div id="fbParseResult" class="mt-2" style="display:none;">
-        <div style="display:grid; grid-template-columns:repeat(auto-fill,minmax(220px,1fr)); gap:8px; margin-top:8px;"
-          id="fbParseOutput"></div>
+        <div id="fbCleanBox" class="field" style="background:var(--accent-bg); border:1px solid color-mix(in srgb, var(--accent) 35%, var(--border)); border-radius:var(--radius); padding:12px;">
+          <div class="card-header" style="margin-bottom:6px;">
+            <span class="field-label" style="color:var(--accent);">Clean URL (Đã gỡ fbclid / tracking)</span>
+            <button type="button" class="copy-btn" id="fbCopyClean">Copy Clean URL</button>
+          </div>
+          <div id="fbCleanUrlText" class="mono text-sm" style="word-break:break-all;"></div>
+        </div>
+        <div style="display:grid; grid-template-columns:repeat(auto-fill, minmax(220px,1fr)); gap:8px;" id="fbParseOutput"></div>
       </div>
     </div>
 
     <!-- Tab: Share Generator -->
     <div class="fb-tab-panel card" id="fbTab-share" style="display:none;">
       <div class="field">
-        <label class="field-label">URL cần chia sẻ</label>
-        <input type="url" id="fbShareUrl" class="w-full"
-          placeholder="https://example.com/article" />
+        <label class="field-label" for="fbShareUrl">URL cần chia sẻ</label>
+        <input type="url" id="fbShareUrl" placeholder="https://example.com/article" spellcheck="false" />
       </div>
-      <div class="field mt-1">
-        <label class="field-label">Quote (tuỳ chọn)</label>
-        <input type="text" id="fbShareQuote" class="w-full"
-          placeholder="Văn bản trích dẫn kèm theo bài share..." />
+      <div class="row">
+        <div>
+          <label class="field-label" for="fbShareQuote">Quote (tuỳ chọn)</label>
+          <input type="text" id="fbShareQuote" placeholder="Trích dẫn đính kèm..." />
+        </div>
+        <div>
+          <label class="field-label" for="fbShareHashtag">Hashtag (tuỳ chọn, không cần #)</label>
+          <input type="text" id="fbShareHashtag" placeholder="example" spellcheck="false" />
+        </div>
       </div>
-      <div class="field mt-1">
-        <label class="field-label">Hashtag (tuỳ chọn, không cần #)</label>
-        <input type="text" id="fbShareHashtag" class="w-full"
-          placeholder="vietnam" />
+      <div class="btn-group">
+        <button type="button" class="btn btn-primary" id="fbGenShare">Tạo Share Link</button>
       </div>
-      <button class="btn btn-primary mt-1" id="fbGenShare">Tạo Share Link</button>
-      <div id="fbShareResult" style="display:none; margin-top:12px;">
-        <label class="field-label">Share URL</label>
-        <div class="d-flex gap-2 align-center mt-1">
-          <input type="text" id="fbShareOutput" class="flex-1 mono" readonly />
-          <button class="copy-btn" id="fbCopyShare" style="position:static;">Copy</button>
-          <a id="fbOpenShare" href="#" target="_blank" rel="noopener noreferrer" class="btn btn-ghost btn-sm">Test</a>
+      <div id="fbShareResult" style="display:none; margin-top:14px;">
+        <label class="field-label" for="fbShareOutput">Share URL</label>
+        <div class="d-flex gap-2 align-center">
+          <input type="text" id="fbShareOutput" class="flex-1 mono" readonly style="background:var(--code-bg);" />
+          <button type="button" class="copy-btn" id="fbCopyShare" style="min-height:38px;">Copy</button>
+          <a id="fbOpenShare" href="#" target="_blank" rel="noopener noreferrer" class="btn btn-secondary">Mở thử ↗</a>
         </div>
       </div>
     </div>
 
-    <!-- Tab: Open Graph -->
+    <!-- Tab: Open Graph Builder & Debugger -->
     <div class="fb-tab-panel card" id="fbTab-og" style="display:none;">
-      <div class="field">
-        <label class="field-label">URL để kiểm tra Open Graph</label>
-        <div class="d-flex gap-2">
-          <input type="url" id="fbOgUrl" class="flex-1"
-            placeholder="https://example.com" />
-          <button class="btn btn-primary" id="fbOgCheck">Check</button>
+      <div class="card-header">
+        <span class="field-label">Tạo thẻ Meta Open Graph (og:*)</span>
+        <button type="button" class="copy-btn" id="fbOgCopyTags">Copy HTML Meta</button>
+      </div>
+      <div class="row">
+        <div>
+          <label class="field-label" for="fbOgTitle">og:title</label>
+          <input type="text" id="fbOgTitle" placeholder="Example Page Title" />
+        </div>
+        <div>
+          <label class="field-label" for="fbOgType">og:type</label>
+          <select id="fbOgType">
+            <option value="website">website</option>
+            <option value="article">article</option>
+            <option value="product">product</option>
+            <option value="video.other">video.other</option>
+          </select>
         </div>
       </div>
-      <div id="fbOgError" style="color:var(--danger,#ef4444); font-size:13px; min-height:18px; margin-top:4px;"></div>
-      <div id="fbOgResult" style="display:none; margin-top:12px;">
-        <div id="fbOgOutput" style="display:grid; gap:8px;"></div>
+      <div class="row mt-1">
+        <div>
+          <label class="field-label" for="fbOgPageUrl">og:url</label>
+          <input type="url" id="fbOgPageUrl" placeholder="https://example.com/page" spellcheck="false" />
+        </div>
+        <div>
+          <label class="field-label" for="fbOgImage">og:image</label>
+          <input type="url" id="fbOgImage" placeholder="https://example.com/cover.png" spellcheck="false" />
+        </div>
       </div>
-      <div class="mt-2 output-box" style="font-size:13px;">
-        <strong>Lưu ý:</strong> Tính năng này sử dụng Facebook Sharing Debugger để kiểm tra.<br>
-        <a href="https://developers.facebook.com/tools/debug/" target="_blank" rel="noopener" style="color:var(--accent);">
-          Mở Facebook Sharing Debugger ↗
-        </a>
+      <div class="field mt-1">
+        <label class="field-label" for="fbOgDesc">og:description</label>
+        <input type="text" id="fbOgDesc" placeholder="Short description for social preview..." />
+      </div>
+      <div class="output-box mt-2">
+        <pre id="fbOgMetaCode" style="margin:0;"></pre>
+      </div>
+
+      <div class="field mt-2" style="padding-top:14px; border-top:1px solid var(--border);">
+        <label class="field-label" for="fbOgUrl">Kiểm tra URL trên trình gỡ lỗi (Debugger)</label>
+        <div class="d-flex gap-2">
+          <input type="url" id="fbOgUrl" class="flex-1" placeholder="https://example.com" spellcheck="false" />
+          <button type="button" class="btn btn-primary" id="fbOgCheck">Mở Debugger</button>
+        </div>
+        <div id="fbOgError" class="text-sm text-danger mt-1"></div>
+        <div id="fbOgResult" class="mt-2" style="display:none;">
+          <div id="fbOgOutput"></div>
+        </div>
       </div>
     </div>
   `;
 }
 
 export function init() {
-  // Tab switching
   document.querySelectorAll('.fb-tab-btn').forEach((btn) => {
     btn.addEventListener('click', () => {
       document.querySelectorAll('.fb-tab-btn').forEach((b) => b.classList.remove('active'));
-      document.querySelectorAll('.fb-tab-panel').forEach((p) => {
-        p.style.display = 'none';
-      });
+      document.querySelectorAll('.fb-tab-panel').forEach((p) => (p.style.display = 'none'));
       btn.classList.add('active');
       document.getElementById(`fbTab-${btn.dataset.tab}`).style.display = '';
     });
   });
 
   // ── Extract UID ─────────────────────────────────────────────────────────
-  document.getElementById('fbUidExtract').addEventListener('click', () => {
-    const url = document.getElementById('fbUidInput').value.trim();
-    const resultEl = document.getElementById('fbUidResult');
-    const outputEl = document.getElementById('fbUidOutput');
+  const uidInput = document.getElementById('fbUidInput');
+  const uidResult = document.getElementById('fbUidResult');
+  const uidOutput = document.getElementById('fbUidOutput');
 
+  const extractUid = () => {
+    const url = uidInput.value.trim();
     if (!url) {
       window.showToast('Nhập URL Facebook', 'error');
       return;
     }
 
     const results = [];
+    const pushUnique = (label, value, note = '') => {
+      if (!results.some((r) => r.label === label && r.value === value)) {
+        results.push({ label, value, note });
+      }
+    };
 
-    // Pattern 1: ?id=NUMERIC
-    const idMatch = url.match(/[?&]id=(\d+)/);
-    if (idMatch) results.push({ label: 'Numeric UID (from URL)', value: idMatch[1] });
+    const patterns = [
+      { re: /[?&]id=(\d+)/, label: 'User / Page UID (?id)' },
+      { re: /[?&]fbid=(\d+)/, label: 'Object FBID (?fbid)' },
+      { re: /\/people\/[^/]+\/(\d+)/, label: 'People Profile ID' },
+      { re: /\/pages\/[^/]+\/(\d+)/, label: 'Page ID' },
+      { re: /\/groups\/(\d+)/, label: 'Group ID' },
+      { re: /\/events\/(\d+)/, label: 'Event ID' },
+      { re: /\/posts\/(\d+)/, label: 'Post ID' },
+      { re: /\/videos\/(\d+)/, label: 'Video ID' },
+      { re: /\/reel\/(\d+)/, label: 'Reel ID' },
+    ];
 
-    // Pattern 2: /profile.php?id=
-    const profileMatch = url.match(/profile\.php\?id=(\d+)/);
-    if (profileMatch) results.push({ label: 'Profile UID', value: profileMatch[1] });
+    patterns.forEach(({ re, label }) => {
+      const m = url.match(re);
+      if (m) pushUnique(label, m[1]);
+    });
 
-    // Pattern 3: /pages/.../ID
-    const pageMatch = url.match(/\/pages\/[^/]+\/(\d+)/);
-    if (pageMatch) results.push({ label: 'Page ID', value: pageMatch[1] });
-
-    // Pattern 4: /groups/ID
-    const groupMatch = url.match(/\/groups\/(\d+)/);
-    if (groupMatch) results.push({ label: 'Group ID', value: groupMatch[1] });
-
-    // Pattern 5: /events/ID
-    const eventMatch = url.match(/\/events\/(\d+)/);
-    if (eventMatch) results.push({ label: 'Event ID', value: eventMatch[1] });
-
-    // Detect username
     try {
-      const u = new URL(url.startsWith('http') ? url : 'https://' + url);
-      const path = u.pathname.replace(/^\/|\/$/g, '');
-      const seg = path.split('/').filter(Boolean);
-      if (seg.length === 1 && !/^\d+$/.test(seg[0]) && seg[0] !== 'groups' && seg[0] !== 'pages') {
-        results.push({
-          label: 'Username',
-          value: seg[0],
-          note: 'Username — UID cần xem source HTML',
-        });
+      const u = new URL(url.startsWith('http') ? url : `https://${url}`);
+      const seg = u.pathname.replace(/^\/|\/$/g, '').split('/').filter(Boolean);
+      const reserved = new Set(['groups', 'pages', 'events', 'watch', 'reel', 'share', 'profile.php', 'people']);
+      if (seg.length === 1 && !/^\d+$/.test(seg[0]) && !reserved.has(seg[0])) {
+        pushUnique('Username', seg[0], 'Username công khai (UID số nằm trong source HTML trang)');
       }
     } catch {}
 
     if (!results.length) {
       results.push({
-        label: 'Không tìm thấy ID',
-        value: 'Thử URL dạng ?id=NUMERIC hoặc /profile.php?id=',
+        label: 'Không tìm thấy ID số trong URL',
+        value: 'Thử URL có chứa ?id=, /groups/ID, /posts/ID hoặc /people/.../ID',
         isNote: true,
       });
     }
 
-    outputEl.innerHTML = results
+    uidOutput.innerHTML = results
       .map(
         (r) => `
-      <div class="d-flex align-center gap-2" style="background:var(--surface-2); border:1px solid var(--border); border-radius:var(--radius); padding:8px 12px; flex-wrap:wrap;">
+      <div class="d-flex align-center justify-between gap-2" style="background:var(--surface-2); border:1px solid var(--border); border-radius:var(--radius); padding:10px 12px; flex-wrap:wrap;">
         <div style="flex:1; min-width:0;">
-          <div class="text-sm text-muted">${r.label}</div>
-          <div class="mono" style="font-weight:600; font-size:15px; word-break:break-all;">${r.value}</div>
-          ${r.note ? `<div class="text-sm text-muted">${r.note}</div>` : ''}
+          <div class="text-sm text-muted">${escHtml(r.label)}</div>
+          <div class="mono" style="font-weight:600; font-size:14.5px; word-break:break-all;">${escHtml(r.value)}</div>
+          ${r.note ? `<div class="text-sm text-muted">${escHtml(r.note)}</div>` : ''}
         </div>
-        ${!r.isNote ? `<button class="btn btn-ghost btn-sm fb-copy-uid" data-val="${r.value}">Copy</button>` : ''}
+        ${!r.isNote ? `<button type="button" class="copy-btn fb-copy-uid" data-val="${escAttr(r.value)}">Copy</button>` : ''}
       </div>
     `,
       )
       .join('');
 
-    resultEl.style.display = '';
-
-    outputEl.querySelectorAll('.fb-copy-uid').forEach((btn) => {
+    uidResult.style.display = '';
+    uidOutput.querySelectorAll('.fb-copy-uid').forEach((btn) => {
       btn.addEventListener('click', () => window.copyToClipboard(btn.dataset.val, btn));
     });
+  };
+
+  document.getElementById('fbUidExtract').addEventListener('click', extractUid);
+  document.getElementById('fbUidSample').addEventListener('click', () => {
+    uidInput.value = 'https://www.facebook.com/groups/123456789012/posts/987654321098/';
+    extractUid();
+  });
+  document.getElementById('fbUidClear').addEventListener('click', () => {
+    uidInput.value = '';
+    uidResult.style.display = 'none';
+  });
+  uidInput.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter' && !e.isComposing) extractUid();
   });
 
-  // ── Parse URL ──────────────────────────────────────────────────────────
-  document.getElementById('fbParseBtn').addEventListener('click', () => {
-    const raw = document.getElementById('fbParseInput').value.trim();
-    const resultEl = document.getElementById('fbParseResult');
-    const output = document.getElementById('fbParseOutput');
+  // ── Parse & Clean URL ──────────────────────────────────────────────────
+  const parseInput = document.getElementById('fbParseInput');
+  const parseResult = document.getElementById('fbParseResult');
+  const parseOutput = document.getElementById('fbParseOutput');
+  const cleanUrlText = document.getElementById('fbCleanUrlText');
+  const copyCleanBtn = document.getElementById('fbCopyClean');
 
+  const parseAndClean = () => {
+    const raw = parseInput.value.trim();
     if (!raw) return;
     let parsed;
     try {
-      parsed = new URL(raw.startsWith('http') ? raw : 'https://facebook.com/' + raw);
+      parsed = new URL(raw.startsWith('http') ? raw : `https://www.facebook.com/${raw.replace(/^\/+/, '')}`);
     } catch {
       window.showToast('URL không hợp lệ', 'error');
       return;
     }
 
-    const parts = [];
-    parts.push({ label: 'Full URL', value: parsed.href });
-    parts.push({ label: 'Domain', value: parsed.hostname });
-    parts.push({ label: 'Path', value: parsed.pathname });
+    const clean = new URL(parsed.href);
+    ['__cft__', '__tn__', '__eep__', 'fbclid', 'mibextid', 'rdid'].forEach((prefix) => {
+      [...clean.searchParams.keys()]
+        .filter((k) => k === prefix || k.startsWith(`${prefix}[`))
+        .forEach((k) => clean.searchParams.delete(k));
+    });
 
-    // Detect content type
+    cleanUrlText.textContent = clean.href;
+    copyCleanBtn.onclick = () => window.copyToClipboard(clean.href, copyCleanBtn);
+
+    const parts = [
+      { label: 'Domain', value: parsed.hostname },
+      { label: 'Path', value: parsed.pathname },
+    ];
     const path = parsed.pathname;
-    if (path.includes('/groups/')) parts.push({ label: 'Type', value: 'Group' });
-    else if (path.includes('/pages/')) parts.push({ label: 'Type', value: 'Page' });
-    else if (path.includes('/events/')) parts.push({ label: 'Type', value: 'Event' });
-    else if (path.includes('/videos/')) parts.push({ label: 'Type', value: 'Video' });
-    else if (path.includes('/photos/')) parts.push({ label: 'Type', value: 'Photo' });
-    else if (path.includes('/posts/')) parts.push({ label: 'Type', value: 'Post' });
-    else if (path.includes('/reel/')) parts.push({ label: 'Type', value: 'Reel' });
-    else if (path.includes('/stories/')) parts.push({ label: 'Type', value: 'Story' });
+    if (path.includes('/groups/')) parts.push({ label: 'Loại nội dung', value: 'Group' });
+    else if (path.includes('/pages/')) parts.push({ label: 'Loại nội dung', value: 'Page' });
+    else if (path.includes('/events/')) parts.push({ label: 'Loại nội dung', value: 'Event' });
+    else if (path.includes('/videos/')) parts.push({ label: 'Loại nội dung', value: 'Video' });
+    else if (path.includes('/posts/')) parts.push({ label: 'Loại nội dung', value: 'Post' });
+    else if (path.includes('/reel/')) parts.push({ label: 'Loại nội dung', value: 'Reel' });
 
-    // Query params
     parsed.searchParams.forEach((val, key) => {
-      // Skip tracking params
-      if (!['__cft__', '__tn__', '__eep__'].some((t) => key.startsWith(t))) {
+      if (!['__cft__', '__tn__', '__eep__', 'fbclid', 'mibextid'].some((t) => key.startsWith(t))) {
         parts.push({ label: `Param: ${key}`, value: val });
       }
     });
 
-    // Clean URL (strip tracking)
-    const clean = new URL(parsed.href);
-    ['__cft__', '__tn__', '__eep__', 'fbclid'].forEach((k) => {
-      [...clean.searchParams.keys()]
-        .filter((key) => key.startsWith(k))
-        .forEach((key) => clean.searchParams.delete(key));
-    });
-    if (clean.href !== parsed.href)
-      parts.push({ label: 'Clean URL (no tracking)', value: clean.href });
-
-    output.innerHTML = parts
+    parseOutput.innerHTML = parts
       .map(
         (p) => `
       <div style="background:var(--surface-2); border:1px solid var(--border); border-radius:var(--radius); padding:8px 10px;">
-        <div class="text-sm text-muted">${p.label}</div>
-        <div class="mono text-sm" style="word-break:break-all; margin-top:2px;">${p.value}</div>
+        <div class="text-sm text-muted">${escHtml(p.label)}</div>
+        <div class="mono text-sm" style="word-break:break-all; margin-top:2px;">${escHtml(p.value)}</div>
       </div>
     `,
       )
       .join('');
 
-    resultEl.style.display = '';
+    parseResult.style.display = '';
+  };
+
+  document.getElementById('fbParseBtn').addEventListener('click', parseAndClean);
+  document.getElementById('fbParseSample').addEventListener('click', () => {
+    parseInput.value = 'https://www.facebook.com/groups/123456789/posts/987654321/?fbclid=IwAR0ExampleTrackingToken&__cft__[0]=AZXExample&mibextid=ZbWKwL';
+    parseAndClean();
+  });
+  document.getElementById('fbParseClear').addEventListener('click', () => {
+    parseInput.value = '';
+    parseResult.style.display = 'none';
   });
 
   // ── Share Generator ────────────────────────────────────────────────────
@@ -284,14 +357,35 @@ export function init() {
     document.getElementById('fbShareResult').style.display = '';
   });
 
-  document.getElementById('fbCopyShare').addEventListener('click', () => {
-    window.copyToClipboard(
-      document.getElementById('fbShareOutput').value,
-      document.getElementById('fbCopyShare'),
-    );
+  document.getElementById('fbCopyShare').addEventListener('click', (e) => {
+    const val = document.getElementById('fbShareOutput').value;
+    if (val) window.copyToClipboard(val, e.currentTarget);
   });
 
-  // ── Open Graph ──────────────────────────────────────────────────────────
+  // ── Open Graph Builder & Debugger ──────────────────────────────────────
+  const ogTitle = document.getElementById('fbOgTitle');
+  const ogType = document.getElementById('fbOgType');
+  const ogPageUrl = document.getElementById('fbOgPageUrl');
+  const ogImage = document.getElementById('fbOgImage');
+  const ogDesc = document.getElementById('fbOgDesc');
+  const ogMetaCode = document.getElementById('fbOgMetaCode');
+  const ogCopyTags = document.getElementById('fbOgCopyTags');
+
+  const updateOgTags = () => {
+    const tags = [
+      `<meta property="og:type" content="${escAttr(ogType.value)}" />`,
+      `<meta property="og:title" content="${escAttr(ogTitle.value.trim() || 'Example Page Title')}" />`,
+      `<meta property="og:description" content="${escAttr(ogDesc.value.trim() || 'Short description for social preview.')}" />`,
+      `<meta property="og:url" content="${escAttr(ogPageUrl.value.trim() || 'https://example.com/page')}" />`,
+      `<meta property="og:image" content="${escAttr(ogImage.value.trim() || 'https://example.com/cover.png')}" />`,
+    ];
+    ogMetaCode.textContent = tags.join('\n');
+  };
+
+  [ogTitle, ogType, ogPageUrl, ogImage, ogDesc].forEach((el) => el.addEventListener('input', updateOgTags));
+  ogCopyTags.addEventListener('click', () => window.copyToClipboard(ogMetaCode.textContent, ogCopyTags));
+  updateOgTags();
+
   document.getElementById('fbOgCheck').addEventListener('click', () => {
     const url = document.getElementById('fbOgUrl').value.trim();
     const errEl = document.getElementById('fbOgError');
@@ -300,7 +394,7 @@ export function init() {
 
     errEl.textContent = '';
     if (!url) {
-      errEl.textContent = 'Nhập URL';
+      errEl.textContent = 'Nhập URL để kiểm tra';
       return;
     }
     try {
@@ -310,15 +404,13 @@ export function init() {
       return;
     }
 
-    // We can't fetch arbitrary URLs due to CORS, so we open FB debugger
     const debugUrl = `https://developers.facebook.com/tools/debug/?q=${encodeURIComponent(url)}`;
     output.innerHTML = `
       <div style="background:var(--surface-2); border:1px solid var(--border); border-radius:var(--radius); padding:12px;">
-        <p class="text-sm">Do giới hạn CORS, không thể fetch Open Graph trực tiếp từ trình duyệt.</p>
-        <p class="text-sm mt-1">Sử dụng các công cụ sau để kiểm tra:</p>
+        <p class="text-sm text-muted">Do giới hạn CORS trên trình duyệt, hãy dùng trực tiếp công cụ chính thức để quét lại thẻ Open Graph:</p>
         <div class="d-flex gap-2 flex-wrap mt-2">
-          <a href="${debugUrl}" target="_blank" rel="noopener" class="btn btn-primary btn-sm">Facebook Sharing Debugger ↗</a>
-          <a href="https://www.opengraph.xyz/url/${encodeURIComponent(url)}" target="_blank" rel="noopener" class="btn btn-secondary btn-sm">OpenGraph.xyz ↗</a>
+          <a href="${debugUrl}" target="_blank" rel="noopener noreferrer" class="btn btn-primary btn-sm">Facebook Sharing Debugger ↗</a>
+          <a href="https://www.opengraph.xyz/url/${encodeURIComponent(url)}" target="_blank" rel="noopener noreferrer" class="btn btn-secondary btn-sm">OpenGraph.xyz ↗</a>
         </div>
       </div>
     `;

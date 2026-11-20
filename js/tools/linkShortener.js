@@ -1,43 +1,51 @@
 /**
- * Link Shortener — uses is.gd API + local history
+ * Link Shortener — is.gd API + safe HTML-escaped local history
  */
+
+const escHtml = (s) => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+const escAttr = (s) => String(s).replace(/&/g, '&amp;').replace(/"/g, '&quot;');
 
 export function getHtml() {
   return `
     <div class="tool-header">
       <h1>Link Shortener</h1>
-      <p>Rút gọn URL dài bằng is.gd. Lịch sử lưu trong trình duyệt.</p>
+      <p>Rút gọn URL dài qua is.gd và lưu lịch sử cục bộ ngay trên trình duyệt.</p>
     </div>
 
     <div class="card">
       <div class="field">
-        <label class="field-label">URL cần rút gọn</label>
-        <div class="d-flex gap-2" style="align-items:flex-end;">
-          <input type="url" id="lsInput" class="flex-1"
+        <label class="field-label" for="lsInput">URL cần rút gọn</label>
+        <div class="d-flex gap-2 align-center flex-wrap">
+          <input
+            type="url"
+            id="lsInput"
+            class="flex-1 mono"
+            style="min-width:220px;"
             placeholder="https://example.com/very/long/url/here"
-            spellcheck="false" autocomplete="off" />
-          <button class="btn btn-primary" id="lsShorten">Rút gọn</button>
+            spellcheck="false"
+            autocomplete="off"
+          />
+          <button type="button" class="btn btn-primary" id="lsShorten">Rút gọn</button>
         </div>
-        <div id="lsError" class="text-sm" style="color:var(--danger,#ef4444); min-height:18px; margin-top:4px;"></div>
+        <div id="lsError" class="text-sm text-danger mt-1" style="min-height:18px;"></div>
       </div>
 
       <div id="lsResultWrap" style="display:none; margin-top:12px;">
-        <label class="field-label">URL đã rút gọn</label>
+        <label class="field-label" for="lsResult">URL đã rút gọn</label>
         <div class="d-flex gap-2 align-center">
-          <input type="text" id="lsResult" class="flex-1 mono" readonly />
-          <button class="btn btn-secondary" id="lsCopyBtn">Copy</button>
-          <a id="lsOpenBtn" href="#" target="_blank" rel="noopener noreferrer" class="btn btn-ghost">Open</a>
+          <input type="text" id="lsResult" class="flex-1 mono" readonly style="background:var(--code-bg);" />
+          <button type="button" class="copy-btn" id="lsCopyBtn" style="min-height:38px;">Copy</button>
+          <a id="lsOpenBtn" href="#" target="_blank" rel="noopener noreferrer" class="btn btn-secondary">Mở ↗</a>
         </div>
       </div>
     </div>
 
-    <!-- History -->
-    <div class="card mt-2" id="lsHistoryCard" style="display:none;">
-      <div class="d-flex align-center gap-1 mb-2" style="justify-content:space-between;">
-        <span class="field-label" style="margin:0;">Lịch sử</span>
-        <button class="btn btn-ghost btn-sm" id="lsClearHistory">Xoá tất cả</button>
+    <div class="card" id="lsHistoryCard" style="display:none;">
+      <div class="card-header">
+        <span class="field-label">Lịch sử rút gọn</span>
+        <button type="button" class="btn btn-ghost btn-sm" id="lsClearHistory">Xóa tất cả</button>
       </div>
-      <div id="lsHistoryList"></div>
+      <div id="lsHistoryList" style="display:flex; flex-direction:column; gap:8px;"></div>
     </div>
   `;
 }
@@ -58,7 +66,8 @@ export function init() {
 
   const getHistory = () => {
     try {
-      return JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]');
+      const parsed = JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]');
+      return Array.isArray(parsed) ? parsed : [];
     } catch {
       return [];
     }
@@ -78,14 +87,14 @@ export function init() {
     historyList.innerHTML = items
       .map(
         (item, i) => `
-      <div class="d-flex align-center gap-2" style="padding:6px 0; border-bottom:1px solid var(--border); flex-wrap:wrap;">
+      <div class="d-flex align-center gap-2" style="padding:8px 10px; background:var(--surface-2); border:1px solid var(--border); border-radius:var(--radius); flex-wrap:wrap;">
         <div style="flex:1; min-width:0;">
-          <div class="text-sm mono" style="overflow:hidden; text-overflow:ellipsis; white-space:nowrap; color:var(--accent);">${item.short}</div>
-          <div class="text-sm text-muted" style="overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${item.original}</div>
+          <div class="text-sm mono text-accent" style="overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${escHtml(item.short)}</div>
+          <div class="text-sm text-muted" style="overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${escHtml(item.original)}</div>
         </div>
         <div class="d-flex gap-1">
-          <button class="btn btn-ghost btn-sm ls-copy-hist" data-short="${item.short}">Copy</button>
-          <button class="btn btn-ghost btn-sm ls-del" data-i="${i}">×</button>
+          <button type="button" class="copy-btn ls-copy-hist" data-short="${escAttr(item.short)}">Copy</button>
+          <button type="button" class="btn btn-ghost btn-sm ls-del" data-i="${i}" style="color:var(--text-3);">×</button>
         </div>
       </div>
     `,
@@ -98,7 +107,7 @@ export function init() {
     historyList.querySelectorAll('.ls-del').forEach((btn) => {
       btn.addEventListener('click', () => {
         const list = getHistory();
-        list.splice(+btn.dataset.i, 1);
+        list.splice(Number(btn.dataset.i), 1);
         saveHistory(list);
         renderHistory();
       });
@@ -111,23 +120,21 @@ export function init() {
       errorEl.textContent = 'Nhập URL cần rút gọn';
       return;
     }
-
-    // Validate URL
     try {
       new URL(url);
     } catch {
-      errorEl.textContent = 'URL không hợp lệ';
+      errorEl.textContent = 'URL không hợp lệ (cần có http:// hoặc https://)';
       return;
     }
 
     errorEl.textContent = '';
-    shortenBtn.textContent = 'Đang rút gọn...';
+    shortenBtn.textContent = 'Đang xử lý...';
     shortenBtn.disabled = true;
 
     try {
       const apiUrl = `https://is.gd/create.php?format=json&url=${encodeURIComponent(url)}`;
       const res = await fetch(apiUrl);
-      if (!res.ok) throw new Error('API error');
+      if (!res.ok) throw new Error('Lỗi kết nối dịch vụ rút gọn');
       const data = await res.json();
       if (data.errorcode) throw new Error(data.errormessage || 'Lỗi API');
 
@@ -136,7 +143,6 @@ export function init() {
       openBtn.href = short;
       resultWrap.style.display = '';
 
-      // Save to history
       const list = getHistory();
       list.unshift({ short, original: url, ts: Date.now() });
       saveHistory(list);
@@ -153,9 +159,11 @@ export function init() {
 
   shortenBtn.addEventListener('click', shorten);
   input.addEventListener('keydown', (e) => {
-    if (e.key === 'Enter') shorten();
+    if (e.key === 'Enter' && !e.isComposing) shorten();
   });
-  copyBtn.addEventListener('click', () => window.copyToClipboard(resultInput.value, copyBtn));
+  copyBtn.addEventListener('click', () => {
+    if (resultInput.value) window.copyToClipboard(resultInput.value, copyBtn);
+  });
   clearHistoryBtn.addEventListener('click', () => {
     localStorage.removeItem(STORAGE_KEY);
     renderHistory();

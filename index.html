@@ -5,8 +5,9 @@
     <meta http-equiv="X-UA-Compatible" content="IE=edge" />
     <meta
       name="viewport"
-      content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"
+      content="width=device-width, initial-scale=1.0"
     />
+    <meta name="color-scheme" content="light dark" />
     <title>Multi Tool</title>
     <meta
       name="description"
@@ -48,7 +49,10 @@
   <body>
     <!-- Inline theme init: runs synchronously before first paint to prevent FOUC -->
     <script>
-      if (localStorage.getItem('theme') === 'dark') document.body.classList.add('dark');
+      if (localStorage.getItem('theme') === 'dark') {
+        document.documentElement.classList.add('dark');
+        document.body.classList.add('dark');
+      }
     </script>
 
     <!-- Sidebar overlay for mobile -->
@@ -58,11 +62,11 @@
       <!-- Sidebar -->
       <aside class="sidebar" id="sidebar">
         <div class="sidebar-top">
-          <a class="brand" href="/">
+          <a class="brand" href="#" id="brandHome">
             <img src="/images/favicon-32x32.png" alt="Logo" width="20" height="20" />
             <span>Multi Tool</span>
           </a>
-          <button class="icon-btn sidebar-close" id="sidebarClose" aria-label="Đóng menu">
+          <button type="button" class="icon-btn sidebar-close" id="sidebarClose" aria-label="Đóng menu">
             <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
               <path
                 d="M1 1l16 16M17 1L1 17"
@@ -85,11 +89,12 @@
             />
           </svg>
           <input
-            style="padding: 8px 30px"
-            type="text"
+            type="search"
             id="toolSearch"
-            placeholder="Tìm tool..."
+            placeholder="Tìm tool... (/)"
+            aria-label="Tìm công cụ"
             autocomplete="off"
+            spellcheck="false"
           />
         </div>
 
@@ -720,6 +725,18 @@
             </svg>
             Currency Converter
           </a>
+          <a class="nav-item" href="#facebook-utils" data-tool="facebook-utils">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none">
+              <path
+                d="M18 2h-3a5 5 0 0 0-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 0 1 1-1h3z"
+                stroke="currentColor"
+                stroke-width="1.5"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              />
+            </svg>
+            Facebook Utils
+          </a>
 
           <p class="nav-group-label">Network</p>
           <a class="nav-item" href="#speed-test" data-tool="speed-test">
@@ -842,11 +859,7 @@
           <div class="welcome-screen" id="welcomeScreen">
             <div class="welcome-inner">
               <h2>Multi Tool</h2>
-              <p>Chọn một công cụ từ thanh bên để bắt đầu.</p>
-              <p style="font-weight: bold; color: red !important" class="welcome-cache-hint">
-                💡 Lần đầu mở mỗi tool có thể mất vài giây để trình duyệt tải về. Các lần sau sẽ mở
-                ngay lập tức nhờ cache.
-              </p>
+              <p>Bộ công cụ lập trình &amp; tiện ích đa năng, chạy hoàn toàn trên trình duyệt.</p>
               <div class="welcome-grid" id="welcomeGrid"></div>
             </div>
           </div>
